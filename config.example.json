@@ -1,0 +1,11 @@
+{
+    "server": {
+        "host": "127.0.0.1",
+        "port": 3000
+    },
+    "model": {
+        "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        "revision": "main",
+        "dtype": "float32"
+    }
+}
