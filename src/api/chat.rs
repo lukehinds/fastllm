@@ -64,22 +64,26 @@ pub async fn create_chat_completion(
 ) -> Result<Json<ChatCompletionResponse>, (StatusCode, Json<super::ErrorResponse>)> {
     // Format the conversation history into a prompt
     let prompt = format_messages(&request.messages);
+    tracing::debug!("Formatted prompt: {}", prompt);
     
     // Generate the response
     let mut model = model.lock().await;
     let output = model.generate(&prompt, request.max_tokens)
         .map_err(|e| {
+            tracing::error!("Generation error: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(super::ErrorResponse::new(
                     format!("Failed to generate response: {}", e),
-                    "internal_error",
+                    "model_error",
                 )),
             )
         })?;
 
     let output_len = output.len();
     let prompt_len = prompt.len();
+
+    tracing::debug!("Generated response: {}", output);
 
     let response = ChatCompletionResponse {
         id: format!("chatcmpl-{}", uuid::Uuid::new_v4()),
@@ -109,7 +113,7 @@ pub async fn list_models() -> Json<serde_json::Value> {
         "object": "list",
         "data": [
             {
-                "id": "local-llama",
+                "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
                 "object": "model",
                 "created": chrono::Utc::now().timestamp(),
                 "owned_by": "local",
@@ -119,9 +123,34 @@ pub async fn list_models() -> Json<serde_json::Value> {
 }
 
 fn format_messages(messages: &[ChatMessage]) -> String {
-    messages
-        .iter()
-        .map(|msg| format!("{}: {}", msg.role, msg.content))
-        .collect::<Vec<_>>()
-        .join("\n")
+    let mut formatted = String::new();
+    
+    for msg in messages {
+        match msg.role.as_str() {
+            "system" => {
+                formatted.push_str("<|system|>\n");
+                formatted.push_str(&msg.content);
+                formatted.push_str("\n</s>\n");
+            },
+            "user" => {
+                formatted.push_str("<|user|>\n");
+                formatted.push_str(&msg.content);
+                formatted.push_str("\n</s>\n");
+            },
+            "assistant" => {
+                formatted.push_str("<|assistant|>\n");
+                formatted.push_str(&msg.content);
+                formatted.push_str("\n</s>\n");
+            },
+            _ => {
+                tracing::warn!("Unknown role: {}", msg.role);
+                formatted.push_str(&format!("{}: {}\n", msg.role, msg.content));
+            }
+        }
+    }
+    
+    // Add the final assistant prompt
+    formatted.push_str("<|assistant|>\n");
+    
+    formatted
 }
