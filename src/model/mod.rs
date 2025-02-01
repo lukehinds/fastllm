@@ -47,7 +47,7 @@ impl Model {
                 tie_word_embeddings: false,
                 max_position_embeddings: 4096,
             },
-            dtype: DType::F32,  // Default to F32
+            dtype: DType::BF16,
         }
     }
 
@@ -132,11 +132,6 @@ impl Model {
     }
 }
 
-pub fn parse_dtype(dtype: &str) -> Result<DType> {
-    match dtype.to_lowercase().as_str() {
-        "float32" | "f32" => Ok(DType::F32),
-        "float16" | "f16" => Ok(DType::F16),
-        "bfloat16" | "bf16" => Ok(DType::BF16),
-        _ => anyhow::bail!("Unsupported dtype: {}", dtype),
-    }
+pub fn default_dtype() -> DType {
+    DType::BF16  // Default to BF16 since that's what the model expects
 }

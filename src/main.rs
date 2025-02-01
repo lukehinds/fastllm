@@ -35,14 +35,14 @@ async fn main() -> Result<()> {
     // Initialize the model
     let device = candle_core::Device::new_metal(0)?;
     // let device = candle_core::Device::Cpu;  // Use CPU device
-    let dtype = model::parse_dtype(&config.model.dtype)?;
-    tracing::info!("Initializing model with dtype: {:?} on device: {:?}", dtype, device);
+    let default_dtype = model::default_dtype();
+    tracing::info!("Using default dtype: {:?} (may be overridden by model's config.json)", default_dtype);
     
     tracing::info!("Loading model: {}", config.model.model_id);
     let model = model::load_model(
         &config.model.model_id,
         &config.model.revision,
-        dtype,
+        default_dtype,
         &device,
     ).await?;
     tracing::info!("Model loaded successfully");

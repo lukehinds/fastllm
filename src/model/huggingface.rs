@@ -9,7 +9,7 @@ use tokenizers::Tokenizer;
 use super::Model;
 
 // Define a custom config that we can deserialize from JSON
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 struct ConfigFile {
     hidden_size: usize,
     intermediate_size: usize,
@@ -20,6 +20,15 @@ struct ConfigFile {
     rms_norm_eps: f64,
     rope_theta: Option<f32>,
     max_position_embeddings: Option<usize>,
+    torch_dtype: Option<String>,
+}
+
+fn torch_dtype_to_candle(dtype: &str) -> DType {
+    match dtype {
+        "float32" | "float64" => DType::F32,
+        "float16" | "bfloat16" => DType::BF16, // Map both float16 and bfloat16 to BF16
+        _ => DType::F32, // default to F32 for unknown types
+    }
 }
 
 impl From<ConfigFile> for LlamaConfig {
@@ -46,7 +55,7 @@ impl From<ConfigFile> for LlamaConfig {
 pub async fn load_model(
     model_id: &str,
     revision: &str,
-    dtype: DType,
+    default_dtype: DType,
     device: &Device,
 ) -> Result<Model> {
     tracing::info!("Initializing HuggingFace API client");
@@ -80,6 +89,7 @@ pub async fn load_model(
         .context("Failed to read config.json")?;
     let config_file: ConfigFile = serde_json::from_str(&config_content)
         .context("Failed to parse config.json")?;
+    let config_file_clone = config_file.clone();
     let config = LlamaConfig::from(config_file);
     tracing::debug!("Model config: hidden_size={}, layers={}, heads={}", 
         config.hidden_size, config.num_hidden_layers, config.num_attention_heads);
@@ -89,6 +99,21 @@ pub async fn load_model(
     let weights = std::fs::read(&model_path)?;
     let tensors = candle_core::safetensors::load_buffer(&weights, device)
         .context("Failed to load tensors from safetensors")?;
+    // Use the model's dtype if available, otherwise fall back to the default
+    let dtype = config_file_clone.torch_dtype
+        .as_ref()
+        .map(|dt| {
+            tracing::info!("Model config specifies torch_dtype: {}", dt);
+            let candle_dtype = torch_dtype_to_candle(dt);
+            tracing::info!("Converted to candle dtype: {:?}", candle_dtype);
+            candle_dtype
+        })
+        .unwrap_or_else(|| {
+            tracing::info!("No torch_dtype specified, using default: {:?}", default_dtype);
+            default_dtype
+        });
+
+    tracing::info!("Final dtype being used: {:?}", dtype);
     let vb = VarBuilder::from_tensors(tensors, dtype, device);
     
     tracing::info!("Initializing model cache");

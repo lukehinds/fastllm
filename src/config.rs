@@ -20,8 +20,6 @@ pub struct ModelConfig {
     pub model_id: String,
     #[serde(default = "default_revision")]
     pub revision: String,
-    #[serde(default = "default_dtype")]
-    pub dtype: String,
 }
 
 fn default_host() -> String {
@@ -34,10 +32,6 @@ fn default_port() -> u16 {
 
 fn default_revision() -> String {
     "main".to_string()
-}
-
-fn default_dtype() -> String {
-    "float16".to_string()
 }
 
 impl Config {

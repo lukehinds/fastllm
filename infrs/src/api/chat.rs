@@ -104,20 +104,6 @@ pub async fn create_chat_completion(
     Ok(Json(response))
 }
 
-pub async fn list_models() -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "object": "list",
-        "data": [
-            {
-                "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-                "object": "model",
-                "created": chrono::Utc::now().timestamp(),
-                "owned_by": "local",
-            }
-        ]
-    }))
-}
-
 fn format_messages(messages: &[ChatMessage]) -> String {
     messages
         .iter()

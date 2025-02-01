@@ -23,7 +23,7 @@ git clone https://github.com/yourusername/infrs.git
 cd infrs
 ```
 
-2. Set up your HuggingFace token:
+2. Set up your HuggingFace token (if you need to access gated models):
 ```bash
 export HUGGING_FACE_HUB_TOKEN=your_token_here
 ```
