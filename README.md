@@ -52,7 +52,6 @@ Configuration options:
     "model": {
         "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",  // HuggingFace model ID
         "revision": "main",                                // Model revision
-        "dtype": "float32"                                // Data type (float16, float32, bfloat16)
     }
 }
 ```

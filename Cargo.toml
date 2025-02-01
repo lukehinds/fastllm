@@ -23,3 +23,4 @@ uuid = { version = "1.6", features = ["v4"] }
 chrono = "0.4"
 futures = "0.3.30"
 futures-util = "0.3.30"
+dotenv = "0.15.0"
