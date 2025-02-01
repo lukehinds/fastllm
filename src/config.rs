@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use anyhow::Result;
+use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -43,7 +44,16 @@ fn default_dtype() -> String {
 impl Config {
     pub fn load() -> Result<Self> {
         let config = config::Config::builder()
-            .add_source(config::File::with_name("config").required(false))
+            .add_source(config::File::with_name("config").required(true))
+            .add_source(config::Environment::with_prefix("INFRS"))
+            .build()?;
+
+        Ok(config.try_deserialize()?)
+    }
+
+    pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self> {
+        let config = config::Config::builder()
+            .add_source(config::File::from(path.as_ref()))
             .add_source(config::Environment::with_prefix("INFRS"))
             .build()?;
 

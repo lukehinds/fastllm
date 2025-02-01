@@ -79,8 +79,12 @@ export INFRS_MODEL__MODEL_ID=your-model-id
 curl http://localhost:3000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "local-llama",
+    "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      },
       {
         "role": "user",
         "content": "What is 2+2?"
@@ -102,7 +106,7 @@ Create a chat completion. Compatible with OpenAI's chat completion API.
 Request body:
 ```json
 {
-    "model": "local-llama",
+    "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     "messages": [
         {
             "role": "system",
@@ -118,9 +122,34 @@ Request body:
 }
 ```
 
+Response format:
+```json
+{
+    "id": "chatcmpl-123abc...",
+    "object": "chat.completion",
+    "created": 1707123456,
+    "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "choices": [
+        {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "The answer is 4."
+            },
+            "finish_reason": "stop"
+        }
+    ],
+    "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 23,
+        "total_tokens": 80
+    }
+}
+```
+
 ### GET /v1/models
 
-List available models.
+List available models. Returns the configured model with its details.
 
 ## Recommended Models for Testing
 
@@ -144,6 +173,23 @@ For initial testing, we recommend using smaller models to ensure everything is w
 }
 ```
 
+## Chat Message Format
+
+The system uses a simple format to combine messages into a prompt:
+- Messages are joined with newlines
+- Each message is formatted as "role: content"
+- Supported roles: "system", "user", "assistant"
+- System messages help set the context for the conversation
+- Multiple messages can be sent to maintain conversation history
+
+Example prompt format:
+```
+system: You are a helpful assistant.
+user: What is 2+2?
+assistant: The answer is 4.
+user: Why is that correct?
+```
+
 ## Troubleshooting
 
 1. Permission Issues:
@@ -159,6 +205,11 @@ For initial testing, we recommend using smaller models to ensure everything is w
    - The system currently uses CPU-only inference
    - Large models will be slower; consider using smaller models for testing
    - Response generation speed depends on the model size and available CPU resources
+
+4. API Usage:
+   - Make sure to use the exact model ID in both config.json and API requests
+   - Include a system message to help guide the model's behavior
+   - Keep max_tokens reasonable (50-256 for most use cases)
 
 ## License
 
