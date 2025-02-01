@@ -25,7 +25,7 @@ cd infrs
 
 2. Set up your HuggingFace token (if you need to access gated models):
 ```bash
-export HUGGING_FACE_HUB_TOKEN=your_token_here
+export HF_TOKEN="your_token_here"
 ```
 
 3. Build the project:
@@ -159,7 +159,6 @@ For initial testing, we recommend using smaller models to ensure everything is w
 {
     "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     "revision": "main",
-    "dtype": "float32"
 }
 ```
 
@@ -168,7 +167,6 @@ For initial testing, we recommend using smaller models to ensure everything is w
 {
     "model_id": "meta-llama/Llama-2-7b-chat-hf",
     "revision": "main",
-    "dtype": "float16"
 }
 ```
 
