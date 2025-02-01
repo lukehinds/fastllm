@@ -8,6 +8,9 @@ A Rust-based LLM inference system that provides OpenAI-compatible API endpoints 
 - Support for loading models from HuggingFace Hub
 - Configurable server settings
 - CPU-based inference with efficient tensor operations using Candle
+- Support for float16, float32, and bfloat16 data types
+- CUDA GPU acceleration (Linux only)
+- MPS Metal GPU acceleration (macOS only)
 - Support for multiple data types (float16, float32, bfloat16)
 
 ## Prerequisites
