@@ -1,7 +1,7 @@
 use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
-use candle_transformers::models::llama::{Cache, Config as LlamaConfig};
+use candle_transformers::models::llama::{Cache, Config as LlamaConfig, LlamaEosToks};
 use tokenizers::Tokenizer;
 
 mod huggingface;
@@ -15,6 +15,7 @@ pub struct Model {
     logits_processor: LogitsProcessor,
     cache: Cache,
     config: LlamaConfig,
+    dtype: DType,
 }
 
 impl Model {
@@ -40,16 +41,21 @@ impl Model {
                 rms_norm_eps: 1e-5,
                 rope_theta: 10000.0,
                 use_flash_attn: false,
-                eos_token_id: Some(2),
+                eos_token_id: Some(LlamaEosToks::Single(2)),
                 bos_token_id: Some(1),
                 rope_scaling: None,
                 tie_word_embeddings: false,
                 max_position_embeddings: 4096,
             },
+            dtype: DType::F32,  // Default to F32
         }
     }
 
     pub fn generate(&mut self, prompt: &str, max_tokens: usize) -> Result<String> {
+        // Reset cache before generation
+        self.cache = Cache::new(true, self.dtype, &self.config, &self.device)
+            .map_err(|e| anyhow::anyhow!("Failed to reset cache: {}", e))?;
+            
         tracing::debug!("Generating response for prompt: {}", prompt);
         
         let encoding = self.tokenizer.encode(prompt, true)

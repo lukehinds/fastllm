@@ -12,11 +12,11 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-http = { version = "0.5", features = ["trace"] }
-candle-core = "0.8.2"
-candle-nn = "0.8.2"
-candle-transformers = "0.8.2"
-tokenizers = "0.21.0"
-hf-hub = { version = "0.4.1", features = ["tokio"] }
+candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+tokenizers = "0.15"
+hf-hub = { version = "0.3", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
 config = "0.13"
 uuid = { version = "1.6", features = ["v4"] }

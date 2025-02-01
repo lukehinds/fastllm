@@ -1,7 +1,7 @@
 use anyhow::{Result, Context};
 use candle_core::{DType, Device};
 use candle_nn::VarBuilder;
-use candle_transformers::models::llama::{Config as LlamaConfig, Cache};
+use candle_transformers::models::llama::{Config as LlamaConfig, Cache, LlamaEosToks};
 use hf_hub::{api::sync::Api, Repo, RepoType};
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
@@ -34,7 +34,7 @@ impl From<ConfigFile> for LlamaConfig {
             rms_norm_eps: cf.rms_norm_eps,
             rope_theta: cf.rope_theta.unwrap_or(10000.0),
             use_flash_attn: false,
-            eos_token_id: Some(2),  // Common EOS token ID for LLaMA models
+            eos_token_id: Some(LlamaEosToks::Single(2)),  // Common EOS token ID for LLaMA models
             bos_token_id: Some(1),
             rope_scaling: None,
             tie_word_embeddings: false,
