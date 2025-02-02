@@ -1,6 +1,7 @@
 # infrs
 
-A Rust-based LLM inference system that provides OpenAI-compatible API endpoints for chat completion, with support for loading models from HuggingFace.
+A blazing fast Rust-based LLM inference system that provides OpenAI-compatible API
+endpoints for chat completion, with support for loading models direft from HuggingFace.
 
 ## Features
 
@@ -13,10 +14,16 @@ A Rust-based LLM inference system that provides OpenAI-compatible API endpoints 
 - MPS Metal GPU acceleration (macOS only)
 - Support for multiple data types (float16, float32, bfloat16)
 
+## TODO
+
+- [ ] Add support for more models (qwen, mistral, deepseek, etc.)
+- [ ] Add support for more data types (float16, float32, bfloat16, int8, uint8, etc.)
+- [ ] Add support for more features (embedding, completion, etc.)
+- [ ] Provide benchmarks for different models and configurations, comparing against other inference engines
 ## Prerequisites
 
 - Rust toolchain (install from https://rustup.rs)
-- A HuggingFace account and access token
+- A HuggingFace account and access token (if you need to access gated models from huggingface)
 
 ## Installation
 

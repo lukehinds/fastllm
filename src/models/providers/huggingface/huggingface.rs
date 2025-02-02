@@ -1,8 +1,7 @@
 use std::env;
 use anyhow::{Result, Context};
 use candle_core::{DType, Device};
-use hf_hub::{api::sync::Api, api::sync::ApiBuilder, Repo, RepoType};
-use std::path::PathBuf;
+use hf_hub::{api::sync::ApiBuilder, Repo, RepoType};
 use tokenizers::Tokenizer;
 
 use crate::models::Model;
