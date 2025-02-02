@@ -20,13 +20,13 @@ pub struct ConfigFile {
     pub torch_dtype: Option<String>,
 }
 
-pub fn torch_dtype_to_candle(dtype: &str) -> DType {
-    match dtype {
-        "float32" | "float64" => DType::F32,
-        "float16" | "bfloat16" => DType::BF16, // Map both float16 and bfloat16 to BF16
-        _ => DType::F32, // default to F32 for unknown types
-    }
-}
+// pub fn torch_dtype_to_candle(dtype: &str) -> DType {
+//     match dtype {
+//         "float32" | "float64" => DType::F32,
+//         "float16" | "bfloat16" => DType::BF16, // Map both float16 and bfloat16 to BF16
+//         _ => DType::F32, // default to F32 for unknown types
+//     }
+// }
 
 impl From<ConfigFile> for LlamaConfig {
     fn from(cf: ConfigFile) -> Self {
