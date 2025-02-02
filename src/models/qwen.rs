@@ -64,12 +64,12 @@ impl ModelInitializer for QwenWithConfig {
     ) -> Result<(Self, Self::Cache)> {
         let qwen_config = QwenConfig::from(config.clone());
         tracing::debug!(
-            "Model config: hidden_size={}, layers={}, heads={}", 
+            "Model config: hidden_size={}, layers={}, heads={}",
             qwen_config.hidden_size, qwen_config.num_hidden_layers, qwen_config.num_attention_heads
         );
 
         let vb = VarBuilder::from_tensors(tensors, dtype, device);
-        
+
         tracing::info!("Initializing model cache");
         // Convert QwenConfig to LlamaConfig for cache initialization
         let llama_config = candle_transformers::models::llama::Config {
@@ -88,9 +88,9 @@ impl ModelInitializer for QwenWithConfig {
             eos_token_id: Some(candle_transformers::models::llama::LlamaEosToks::Single(2)),
             bos_token_id: Some(1),
         };
-        
+
         let cache = Cache::new(true, dtype, &llama_config, device)?;
-        
+
         tracing::info!("Initializing model");
         // Temporarily use Llama model since Qwen isn't fully available yet
         let model = Qwen::load(vb, &llama_config)?;
