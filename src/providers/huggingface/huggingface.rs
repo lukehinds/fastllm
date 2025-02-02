@@ -1,18 +1,20 @@
 use std::env;
 use anyhow::{Result, Context};
 use candle_core::{DType, Device};
+use super::dtype_utils::{get_dtype, validate_dtype_compatibility};
 use hf_hub::{api::sync::ApiBuilder, Repo, RepoType};
 use tokenizers::Tokenizer;
 
 use crate::models::Model;
-use crate::models::llama::{self, ConfigFile};
+use crate::models::model_initializer::ModelInitializer;
+use crate::models::llama::ConfigFile;
 
-pub async fn load_model(
+pub async fn load_model<M: ModelInitializer<Config = ConfigFile>>(
     model_id: &str,
     revision: &str,
     default_dtype: DType,
     device: &Device,
-) -> Result<Model> {
+) -> Result<Model<M>> {
     tracing::info!("Initializing HuggingFace API client");
 
     let token = env::var("HF_TOKEN").ok();
@@ -92,22 +94,10 @@ pub async fn load_model(
         combined_tensors
     };
 
-    let dtype = config_file.torch_dtype
-        .as_ref()
-        .map(|dt| {
-            tracing::info!("Model config specifies torch_dtype: {}", dt);
-            let candle_dtype = llama::torch_dtype_to_candle(dt);
-            tracing::info!("Converted to candle dtype: {:?}", candle_dtype);
-            candle_dtype
-        })
-        .unwrap_or_else(|| {
-            tracing::info!("No torch_dtype specified, using default: {:?}", default_dtype);
-            default_dtype
-        });
+    let dtype = get_dtype(config_file.torch_dtype.as_ref(), default_dtype);
+    validate_dtype_compatibility(dtype, model_id);
 
-    tracing::info!("Final dtype being used: {:?}", dtype);
-
-    let (model, cache) = llama::initialize_model(&config_file, tensors, dtype, device)?;
+    let (model, cache) = M::initialize_model(&config_file, tensors, dtype, device)?;
 
     tracing::info!("Model loaded successfully");
     Ok(Model::new(tokenizer, model, device.clone(), cache))

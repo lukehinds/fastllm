@@ -10,6 +10,8 @@ mod config;
 mod models;
 mod providers;
 
+use models::{load_model, llama::LlamaWithConfig};
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -63,7 +65,7 @@ async fn main() -> Result<()> {
     tracing::info!("Using default dtype: {:?} (may be overridden by model's config.json)", default_dtype);
     
     tracing::info!("Loading model: {}", config.model.model_id);
-    let model = models::load_model(
+    let model: models::Model<LlamaWithConfig> = load_model(
         &config.model.model_id,
         &config.model.revision,
         default_dtype,
