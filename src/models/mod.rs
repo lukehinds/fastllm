@@ -5,6 +5,7 @@ use tokenizers::Tokenizer;
 
 pub mod llama;
 pub mod mistral;
+pub mod qwen;
 pub mod model_initializer;
 use crate::providers::huggingface;
 
