@@ -15,6 +15,10 @@ struct Args {
     /// Path to config file
     #[arg(short, long, default_value = "config.json")]
     config: String,
+
+    /// Model ID to use (overrides config file)
+    #[arg(long)]
+    model: Option<String>,
 }
 
 #[tokio::main]
@@ -29,7 +33,13 @@ async fn main() -> Result<()> {
     tracing::info!("Loading config from: {}", args.config);
 
     // Load configuration
-    let config = config::Config::from_file(&args.config)?;
+    let mut config = config::Config::from_file(&args.config)?;
+    
+    // Override model if specified in CLI args
+    if let Some(model_id) = args.model {
+        config.model.model_id = model_id;
+    }
+    
     tracing::info!("Config loaded: {:?}", config);
 
     // Initialize the model
