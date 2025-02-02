@@ -5,11 +5,11 @@ use axum::{
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::models::Model;
+use crate::models::{Model, llama::Llama};
 
 mod chat;
 
-pub fn routes(model: Arc<Mutex<Model>>) -> Router {
+pub fn routes(model: Arc<Mutex<Model<Llama>>>) -> Router {
     Router::new()
         .route("/v1/chat/completions", post(chat::create_chat_completion))
         .route("/v1/models", get(chat::list_models))

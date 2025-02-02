@@ -1,30 +1,30 @@
 use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
-use candle_transformers::models::llama::{Cache, Config as LlamaConfig, LlamaEosToks};
 use tokenizers::Tokenizer;
 
 pub mod llama;
+pub mod model_initializer;
 use crate::providers::huggingface;
 
 pub use huggingface::load_model;
+use model_initializer::ModelInitializer;
 
-pub struct Model {
+pub struct Model<M: ModelInitializer> {
     tokenizer: Tokenizer,
-    model: candle_transformers::models::llama::Llama,
+    model: M,
     device: Device,
     logits_processor: LogitsProcessor,
-    cache: Cache,
-    config: LlamaConfig,
+    cache: M::Cache,
     dtype: DType,
 }
 
-impl Model {
+impl<M: ModelInitializer> Model<M> {
     pub fn new(
         tokenizer: Tokenizer,
-        model: candle_transformers::models::llama::Llama,
+        model: M,
         device: Device,
-        cache: Cache,
+        cache: M::Cache,
     ) -> Self {
         Self {
             tokenizer,
@@ -32,31 +32,11 @@ impl Model {
             device,
             logits_processor: LogitsProcessor::new(Default::default(), None, None),
             cache,
-            config: LlamaConfig {
-                hidden_size: 2048,
-                intermediate_size: 5632,
-                vocab_size: 32000,
-                num_hidden_layers: 22,
-                num_attention_heads: 32,
-                num_key_value_heads: 32,
-                rms_norm_eps: 1e-5,
-                rope_theta: 10000.0,
-                use_flash_attn: false,
-                eos_token_id: Some(LlamaEosToks::Single(2)),
-                bos_token_id: Some(1),
-                rope_scaling: None,
-                tie_word_embeddings: false,
-                max_position_embeddings: 4096,
-            },
             dtype: DType::BF16,
         }
     }
 
     pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
-        // Reset cache before generation
-        self.cache = Cache::new(true, self.dtype, &self.config, &self.device)
-            .map_err(|e| anyhow::anyhow!("Failed to reset cache: {}", e))?;
-
         // Update LogitsProcessor with temperature, converting f32 to f64
         self.logits_processor = LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
 

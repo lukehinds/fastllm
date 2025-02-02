@@ -1,9 +1,13 @@
 use anyhow::{Context, Result};
-use candle_core::{DType, Device};
+use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
-use candle_transformers::models::llama::{Config as LlamaConfig, Cache, LlamaEosToks, Llama};
+use candle_transformers::models::llama::{Config as LlamaConfig, Cache, LlamaEosToks, Llama as CandelLlama};
+
+pub type Llama = CandelLlama;
 use serde::Deserialize;
 use std::collections::HashMap;
+
+use super::model_initializer::ModelInitializer;
 
 // Define a custom config that we can deserialize from JSON
 #[derive(Deserialize, Clone)]
@@ -49,27 +53,41 @@ impl From<ConfigFile> for LlamaConfig {
     }
 }
 
-pub fn initialize_model(
-    config: &ConfigFile,
-    tensors: HashMap<String, candle_core::Tensor>,
-    dtype: DType,
-    device: &Device,
-) -> Result<(Llama, Cache)> {
-    let config = LlamaConfig::from(config.clone());
-    tracing::debug!(
-        "Model config: hidden_size={}, layers={}, heads={}", 
-        config.hidden_size, config.num_hidden_layers, config.num_attention_heads
-    );
+impl ModelInitializer for Llama {
+    type Config = ConfigFile;
+    type Cache = Cache;
 
-    let vb = VarBuilder::from_tensors(tensors, dtype, device);
-    
-    tracing::info!("Initializing model cache");
-    let cache = Cache::new(true, dtype, &config, device)
-        .context("Failed to initialize model cache")?;
-    
-    tracing::info!("Initializing model");
-    let model = Llama::load(vb, &config)
-        .context("Failed to initialize model")?;
+    fn initialize_model(
+        config: &Self::Config,
+        tensors: HashMap<String, Tensor>,
+        dtype: DType,
+        device: &Device,
+    ) -> Result<(Self, Self::Cache)> {
+        let config = LlamaConfig::from(config.clone());
+        tracing::debug!(
+            "Model config: hidden_size={}, layers={}, heads={}", 
+            config.hidden_size, config.num_hidden_layers, config.num_attention_heads
+        );
 
-    Ok((model, cache))
-} 
+        let vb = VarBuilder::from_tensors(tensors, dtype, device);
+        
+        tracing::info!("Initializing model cache");
+        let cache = Cache::new(true, dtype, &config, device)
+            .context("Failed to initialize model cache")?;
+        
+        tracing::info!("Initializing model");
+        let model = Llama::load(vb, &config)
+            .context("Failed to initialize model")?;
+
+        Ok((model, cache))
+    }
+
+    fn forward(
+        &self,
+        input: &Tensor,
+        pos: usize,
+        cache: &mut Self::Cache,
+    ) -> Result<Tensor> {
+        Ok(self.forward(input, pos, cache)?)
+    }
+}
