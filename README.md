@@ -14,6 +14,12 @@ chat completion endpoint for now and MPS is the only supported device.
 - 🤗 Support for loading models from HuggingFace Hub
 - 🍎 MPS Metal GPU acceleration (macOS only)
 
+## Model Support
+
+- [x] TinyLlama/TinyLlama-1.1B-Chat-v1.0
+- [x] Mistral
+- [x] Qwen
+
 ## 📋 TODO
 
 - [ ] Add device autosensing so that we also support CPU, MPS, and CUDA devices.

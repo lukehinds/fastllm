@@ -15,7 +15,7 @@ tower-http = { version = "0.5", features = ["trace"] }
 candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
 candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
 candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-tokenizers = "0.15"
+tokenizers = "0.21.0"
 hf-hub = { version = "0.3", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
 config = "0.13"
