@@ -71,8 +71,20 @@ export INFRS_MODEL__MODEL_ID=your-model-id
 
 1. Start the server:
 ```bash
+# Using default config file (config.json)
 ./target/release/infrs
+
+# Using a specific config file
+./target/release/infrs --config custom-config.json
+
+# Override the model directly from command line
+./target/release/infrs --model TinyLlama/TinyLlama-1.1B-Chat-v1.0
 ```
+
+The server can be configured in three ways (in order of precedence):
+1. Command line arguments (--model)
+2. Environment variables (INFRS_*)
+3. Configuration file (config.json)
 
 2. Make requests to the OpenAI-compatible endpoints:
 
@@ -153,26 +165,6 @@ Response format:
 
 List available models. Returns the configured model with its details.
 
-## Recommended Models for Testing
-
-For initial testing, we recommend using smaller models to ensure everything is working correctly:
-
-1. TinyLlama (1.1B parameters):
-```json
-{
-    "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    "revision": "main",
-}
-```
-
-2. For larger models like Llama-2, ensure you have sufficient RAM and consider using float16:
-```json
-{
-    "model_id": "meta-llama/Llama-2-7b-chat-hf",
-    "revision": "main",
-}
-```
-
 ## Chat Message Format
 
 The system uses a simple format to combine messages into a prompt:
@@ -189,27 +181,6 @@ user: What is 2+2?
 assistant: The answer is 4.
 user: Why is that correct?
 ```
-
-## Troubleshooting
-
-1. Permission Issues:
-   - Ensure your HuggingFace token is set correctly
-   - For gated models (like Llama-2), make sure you have accepted the model's license on HuggingFace
-
-2. Memory Issues:
-   - Start with a smaller model like TinyLlama
-   - Try using "float16" dtype instead of "float32"
-   - Ensure you have enough available RAM for your chosen model
-
-3. Performance:
-   - The system currently uses CPU-only inference
-   - Large models will be slower; consider using smaller models for testing
-   - Response generation speed depends on the model size and available CPU resources
-
-4. API Usage:
-   - Make sure to use the exact model ID in both config.json and API requests
-   - Include a system message to help guide the model's behavior
-   - Keep max_tokens reasonable (50-256 for most use cases)
 
 ## License
 
