@@ -5,8 +5,8 @@ use hf_hub::{api::sync::Api, api::sync::ApiBuilder, Repo, RepoType};
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
-use super::Model;
-use super::llama::{self, ConfigFile};
+use crate::models::Model;
+use crate::models::llama::{self, ConfigFile};
 
 pub async fn load_model(
     model_id: &str,

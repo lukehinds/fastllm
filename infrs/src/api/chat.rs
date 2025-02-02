@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::model::Model;
+use crate::models::Model;
 
 #[derive(Debug, Deserialize)]
 pub struct ChatCompletionRequest {
