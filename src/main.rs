@@ -54,7 +54,8 @@ async fn main() -> Result<()> {
     
     tracing::info!("Config loaded: {:?}", config);
 
-    // Initialize the model
+    // Need to make device configurable or autosensing so that we also support
+    // CPU, MPS, and CUDA devices.
     let device = candle_core::Device::new_metal(0)?;
     // let device = candle_core::Device::Cpu;  // Use CPU device
     let default_dtype = models::default_dtype();
