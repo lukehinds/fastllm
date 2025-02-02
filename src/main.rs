@@ -23,11 +23,23 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging
+    // Initialize logging with more production-ready settings
     tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
+        )
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .with_target(false)
+        .with_thread_names(true)
+        .with_ansi(true)
         .init();
 
+    // Create a span for the main function
+    let _guard = tracing::info_span!("main").entered();
+    
     // Parse command line arguments
     let args = Args::parse();
     tracing::info!("Loading config from: {}", args.config);
