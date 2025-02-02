@@ -4,12 +4,10 @@ use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::llama::{Cache, Config as LlamaConfig, LlamaEosToks};
 use tokenizers::Tokenizer;
 
-mod llama;
-mod providers {
-    pub mod huggingface;
-}
+pub mod llama;
+use crate::providers::huggingface;
 
-pub use providers::huggingface::load_model;
+pub use huggingface::load_model;
 
 pub struct Model {
     tokenizer: Tokenizer,

@@ -8,6 +8,7 @@ use tower_http::trace::TraceLayer;
 mod api;
 mod config;
 mod models;
+mod providers;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
