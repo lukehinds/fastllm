@@ -35,3 +35,6 @@ build/
 
 # Log files
 *.log
+
+# FastLLM specfic 
+config.json

@@ -8,6 +8,7 @@ use tokio::sync::Mutex;
 
 use crate::models::Model;
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct ChatCompletionRequest {
     model: String,
@@ -68,7 +69,7 @@ pub async fn create_chat_completion(
     
     // Generate the response
     let mut model = model.lock().await;
-    let output = model.generate(&prompt, request.max_tokens)
+    let output = model.generate(&prompt, request.max_tokens, request.temperature)
         .map_err(|e| {
             tracing::error!("Generation error: {}", e);
             (

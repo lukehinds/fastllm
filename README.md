@@ -116,7 +116,8 @@ curl http://localhost:3000/v1/chat/completions \
         "content": "What is 2+2?"
       }
     ],
-    "max_tokens": 50
+    "max_tokens": 50,
+    "temperature": 0.7
   }'
 ```
 
