@@ -7,7 +7,7 @@ use tower_http::trace::TraceLayer;
 
 mod api;
 mod config;
-mod model;
+mod models;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -45,11 +45,11 @@ async fn main() -> Result<()> {
     // Initialize the model
     let device = candle_core::Device::new_metal(0)?;
     // let device = candle_core::Device::Cpu;  // Use CPU device
-    let default_dtype = model::default_dtype();
+    let default_dtype = models::default_dtype();
     tracing::info!("Using default dtype: {:?} (may be overridden by model's config.json)", default_dtype);
     
     tracing::info!("Loading model: {}", config.model.model_id);
-    let model = model::load_model(
+    let model = models::load_model(
         &config.model.model_id,
         &config.model.revision,
         default_dtype,
