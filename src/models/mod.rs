@@ -4,6 +4,7 @@ use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
 
 pub mod llama;
+pub mod mistral;
 pub mod model_initializer;
 use crate::providers::huggingface;
 
