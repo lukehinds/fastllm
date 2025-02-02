@@ -38,7 +38,7 @@ impl Config {
     pub fn load() -> Result<Self> {
         let config = config::Config::builder()
             .add_source(config::File::with_name("config").required(false))
-            .add_source(config::Environment::with_prefix("INFRS"))
+            .add_source(config::Environment::with_prefix("FASTLLM"))
             .build()?;
 
         Ok(config.try_deserialize()?)
@@ -47,7 +47,7 @@ impl Config {
     pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self> {
         let config = config::Config::builder()
             .add_source(config::File::from(path.as_ref()))
-            .add_source(config::Environment::with_prefix("INFRS"))
+            .add_source(config::Environment::with_prefix("FASTLLM"))
             .build()?;
 
         Ok(config.try_deserialize()?)

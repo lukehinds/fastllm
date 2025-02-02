@@ -1,36 +1,36 @@
-# infrs
+# 🚀 FastLLM
 
-A blazing fast Rust-based LLM inference system that provides OpenAI-compatible API
-endpoints for chat completion, with support for loading models direft from HuggingFace.
+A blazingly fast Rust-based LLM inference system that provides OpenAI-compatible API
+endpoints for chat completion, with support for loading models directly from HuggingFace.
 
-## Features
+## ✨ Features
 
-- OpenAI-compatible chat completion API endpoint
-- Support for loading models from HuggingFace Hub
-- Configurable server settings
-- CPU-based inference with efficient tensor operations using Candle
-- Support for float16, float32, and bfloat16 data types
-- CUDA GPU acceleration (Linux only)
-- MPS Metal GPU acceleration (macOS only)
-- Support for multiple data types (float16, float32, bfloat16)
+- 🔄 OpenAI-compatible chat completion API endpoint
+- 🤗 Support for loading models from HuggingFace Hub
+- ⚙️ Configurable server settings
+- 💻 CPU-based inference with efficient tensor operations using Candle
+- 🎯 Support for float16, float32, and bfloat16 data types
+- 🖥️ CUDA GPU acceleration (Linux only)
+- 🍎 MPS Metal GPU acceleration (macOS only)
 
-## TODO
+## 📋 TODO
 
 - [ ] Add support for more models (qwen, mistral, deepseek, etc.)
 - [ ] Add support for more data types (float16, float32, bfloat16, int8, uint8, etc.)
 - [ ] Add support for more features (embedding, completion, etc.)
-- [ ] Provide benchmarks for different models and configurations, comparing against other inference engines
-## Prerequisites
+- [ ] Provide benchmarks for different models and configurations
+
+## 🛠️ Prerequisites
 
 - Rust toolchain (install from https://rustup.rs)
-- A HuggingFace account and access token (if you need to access gated models from huggingface)
+- A HuggingFace account and access token (if you need to access gated models)
 
-## Installation
+## 📦 Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/infrs.git
-cd infrs
+git clone https://github.com/yourusername/fastllm.git
+cd fastllm
 ```
 
 2. Set up your HuggingFace token (if you need to access gated models):
@@ -43,7 +43,7 @@ export HF_TOKEN="your_token_here"
 cargo build --release
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 Copy the example configuration file and modify it according to your needs:
 
@@ -51,7 +51,7 @@ Copy the example configuration file and modify it according to your needs:
 cp config.example.json config.json
 ```
 
-Configuration options:
+### Configuration Options
 
 ```json
 {
@@ -61,36 +61,38 @@ Configuration options:
     },
     "model": {
         "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",  // HuggingFace model ID
-        "revision": "main",                                // Model revision
+        "revision": "main"                                  // Model revision
     }
 }
 ```
 
-You can also configure the server using environment variables with the `INFRS_` prefix:
+### Environment Variables
+
+You can also configure the server using environment variables with the `FASTLLM_` prefix:
 
 ```bash
-export INFRS_SERVER__HOST=0.0.0.0
-export INFRS_SERVER__PORT=8080
-export INFRS_MODEL__MODEL_ID=your-model-id
+export FASTLLM_SERVER__HOST=0.0.0.0
+export FASTLLM_SERVER__PORT=8080
+export FASTLLM_MODEL__MODEL_ID=your-model-id
 ```
 
-## Usage
+## 🚀 Usage
 
 1. Start the server:
 ```bash
 # Using default config file (config.json)
-./target/release/infrs
+./target/release/fastllm
 
 # Using a specific config file
-./target/release/infrs --config custom-config.json
+./target/release/fastllm --config custom-config.json
 
 # Override the model directly from command line
-./target/release/infrs --model TinyLlama/TinyLlama-1.1B-Chat-v1.0
+./target/release/fastllm --model TinyLlama/TinyLlama-1.1B-Chat-v1.0
 ```
 
 The server can be configured in three ways (in order of precedence):
 1. Command line arguments (--model)
-2. Environment variables (INFRS_*)
+2. Environment variables (FASTLLM_*)
 3. Configuration file (config.json)
 
 2. Make requests to the OpenAI-compatible endpoints:
@@ -118,13 +120,13 @@ curl http://localhost:3000/v1/chat/completions \
 curl http://localhost:3000/v1/models
 ```
 
-## API Endpoints
+## 🔌 API Endpoints
 
 ### POST /v1/chat/completions
 
 Create a chat completion. Compatible with OpenAI's chat completion API.
 
-Request body:
+#### Request Format
 ```json
 {
     "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
@@ -143,7 +145,7 @@ Request body:
 }
 ```
 
-Response format:
+#### Response Format
 ```json
 {
     "id": "chatcmpl-123abc...",
@@ -172,12 +174,12 @@ Response format:
 
 List available models. Returns the configured model with its details.
 
-## Chat Message Format
+## 💬 Chat Message Format
 
 The system uses a simple format to combine messages into a prompt:
 - Messages are joined with newlines
-- Each message is formatted as "role: content"
-- Supported roles: "system", "user", "assistant"
+- Each message is formatted as `role: content`
+- Supported roles: `system`, `user`, `assistant`
 - System messages help set the context for the conversation
 - Multiple messages can be sent to maintain conversation history
 
@@ -189,6 +191,6 @@ assistant: The answer is 4.
 user: Why is that correct?
 ```
 
-## License
+## 📄 License
 
 MIT License
