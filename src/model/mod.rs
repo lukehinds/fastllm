@@ -4,6 +4,7 @@ use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::llama::{Cache, Config as LlamaConfig, LlamaEosToks};
 use tokenizers::Tokenizer;
 
+mod llama;
 mod huggingface;
 
 pub use huggingface::load_model;
