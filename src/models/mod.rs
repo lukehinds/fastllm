@@ -37,6 +37,9 @@ impl<M: ModelInitializer> Model<M> {
     }
 
     pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
+        // Reset the cache before each generation
+        self.cache = M::initialize_cache(&self.device, self.dtype)?;
+
         // Update LogitsProcessor with temperature, converting f32 to f64
         self.logits_processor = LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
 

@@ -15,6 +15,8 @@ pub trait ModelInitializer {
     where
         Self: Sized;
 
+    fn initialize_cache(device: &Device, dtype: DType) -> Result<Self::Cache>;
+
     fn forward(
         &self,
         input: &Tensor,

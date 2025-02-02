@@ -53,7 +53,12 @@ impl From<ConfigFile> for LlamaConfig {
     }
 }
 
-impl ModelInitializer for Llama {
+pub struct LlamaWithConfig {
+    model: Llama,
+    config: LlamaConfig,
+}
+
+impl ModelInitializer for LlamaWithConfig {
     type Config = ConfigFile;
     type Cache = Cache;
 
@@ -63,23 +68,46 @@ impl ModelInitializer for Llama {
         dtype: DType,
         device: &Device,
     ) -> Result<(Self, Self::Cache)> {
-        let config = LlamaConfig::from(config.clone());
+        let llama_config = LlamaConfig::from(config.clone());
         tracing::debug!(
             "Model config: hidden_size={}, layers={}, heads={}", 
-            config.hidden_size, config.num_hidden_layers, config.num_attention_heads
+            llama_config.hidden_size, llama_config.num_hidden_layers, llama_config.num_attention_heads
         );
 
         let vb = VarBuilder::from_tensors(tensors, dtype, device);
         
         tracing::info!("Initializing model cache");
-        let cache = Cache::new(true, dtype, &config, device)
+        let cache = Cache::new(true, dtype, &llama_config, device)
             .context("Failed to initialize model cache")?;
         
         tracing::info!("Initializing model");
-        let model = Llama::load(vb, &config)
+        let model = Llama::load(vb, &llama_config)
             .context("Failed to initialize model")?;
 
-        Ok((model, cache))
+        Ok((Self { model, config: llama_config }, cache))
+    }
+
+    fn initialize_cache(device: &Device, dtype: DType) -> Result<Self::Cache> {
+        // This method can't access `self`, so we need to create a default config
+        // These values are for TinyLlama-1.1B-Chat-v1.0
+        let default_config = LlamaConfig {
+            hidden_size: 2048,
+            intermediate_size: 5632,
+            vocab_size: 32000,
+            num_hidden_layers: 22,
+            num_attention_heads: 32,
+            num_key_value_heads: 4,
+            rms_norm_eps: 1e-5,
+            rope_theta: 10000.0,
+            use_flash_attn: false,
+            eos_token_id: Some(LlamaEosToks::Single(2)),
+            bos_token_id: Some(1),
+            rope_scaling: None,
+            tie_word_embeddings: false,
+            max_position_embeddings: 2048,
+        };
+        Cache::new(true, dtype, &default_config, device)
+            .context("Failed to initialize model cache")
     }
 
     fn forward(
@@ -88,6 +116,6 @@ impl ModelInitializer for Llama {
         pos: usize,
         cache: &mut Self::Cache,
     ) -> Result<Tensor> {
-        Ok(self.forward(input, pos, cache)?)
+        Ok(self.model.forward(input, pos, cache)?)
     }
 }
