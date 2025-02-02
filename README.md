@@ -3,22 +3,25 @@
 A blazingly fast Rust-based LLM inference system that provides OpenAI-compatible API
 endpoints for chat completion, with support for loading models directly from HuggingFace.
 
+# 🧪 Experimental
+
+This is a work in progress and the API is not yet stable. We only support the
+chat completion endpoint for now and MPS is the only supported device.
+
 ## ✨ Features
 
 - 🔄 OpenAI-compatible chat completion API endpoint
 - 🤗 Support for loading models from HuggingFace Hub
-- ⚙️ Configurable server settings
-- 💻 CPU-based inference with efficient tensor operations using Candle
-- 🎯 Support for float16, float32, and bfloat16 data types
-- 🖥️ CUDA GPU acceleration (Linux only)
 - 🍎 MPS Metal GPU acceleration (macOS only)
 
 ## 📋 TODO
 
+- [ ] Add device autosensing so that we also support CPU, MPS, and CUDA devices.
 - [ ] Add support for more models (qwen, mistral, deepseek, etc.)
 - [ ] Add support for more data types (float16, float32, bfloat16, int8, uint8, etc.)
 - [ ] Add support for more features (embedding, completion, etc.)
 - [ ] Provide benchmarks for different models and configurations
+- [ ] Add support for model listing at /v1/models
 
 ## 🛠️ Prerequisites
 
@@ -115,9 +118,6 @@ curl http://localhost:3000/v1/chat/completions \
     ],
     "max_tokens": 50
   }'
-
-# List available models
-curl http://localhost:3000/v1/models
 ```
 
 ## 🔌 API Endpoints
@@ -169,10 +169,6 @@ Create a chat completion. Compatible with OpenAI's chat completion API.
     }
 }
 ```
-
-### GET /v1/models
-
-List available models. Returns the configured model with its details.
 
 ## 💬 Chat Message Format
 
