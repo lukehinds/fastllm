@@ -110,7 +110,8 @@ impl<M: ModelInitializer> Model<M> {
 
             // Get the logits for the last position
             // The logits tensor has shape [batch_size=1, vocab_size]
-            let last_logits = logits.get(0)?;  // Get first batch
+            // Reshape logits to [batch_size=1, vocab_size] before sampling
+            let last_logits = logits.get(0)?.flatten_all()?;
             tracing::debug!("Last logits dims: {:?}", last_logits.dims());
 
             // Sample the next token
