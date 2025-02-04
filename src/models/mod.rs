@@ -10,7 +10,33 @@ pub mod model_initializer;
 use crate::providers::huggingface;
 
 pub use huggingface::load_model;
-use model_initializer::ModelInitializer;
+pub use model_initializer::ModelInitializer;
+
+use llama::LlamaWithConfig;
+use qwen::QwenWithConfig;
+
+pub enum ModelWrapper {
+    Llama(Model<LlamaWithConfig>),
+    Qwen(Model<QwenWithConfig>),
+}
+
+impl std::fmt::Debug for ModelWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Llama(_) => write!(f, "ModelWrapper::Llama"),
+            Self::Qwen(_) => write!(f, "ModelWrapper::Qwen"),
+        }
+    }
+}
+
+impl ModelWrapper {
+    pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
+        match self {
+            ModelWrapper::Llama(model) => model.generate(prompt, max_tokens, temperature),
+            ModelWrapper::Qwen(model) => model.generate(prompt, max_tokens, temperature),
+        }
+    }
+}
 
 pub struct Model<M: ModelInitializer> {
     tokenizer: Tokenizer,

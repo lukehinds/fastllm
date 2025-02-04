@@ -53,6 +53,7 @@ impl From<ConfigFile> for LlamaConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct LlamaWithConfig {
     model: Llama,
     config: LlamaConfig,

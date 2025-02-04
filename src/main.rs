@@ -10,7 +10,7 @@ mod config;
 mod models;
 mod providers;
 
-use models::{load_model, llama::LlamaWithConfig};
+use models::{load_model, ModelWrapper, llama::LlamaWithConfig, qwen::QwenWithConfig};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -65,12 +65,27 @@ async fn main() -> Result<()> {
     tracing::info!("Using default dtype: {:?} (may be overridden by model's config.json)", default_dtype);
     
     tracing::info!("Loading model: {}", config.model.model_id);
-    let model: models::Model<LlamaWithConfig> = load_model(
-        &config.model.model_id,
-        &config.model.revision,
-        default_dtype,
-        &device,
-    ).await?;
+    // Determine model type from model ID
+    let model = if config.model.model_id.contains("Qwen") {
+        models::ModelWrapper::Qwen(
+            load_model::<models::qwen::QwenWithConfig>(
+                &config.model.model_id,
+                &config.model.revision,
+                default_dtype,
+                &device,
+            ).await?
+        )
+    } else {
+        // Default to Llama for other models
+        models::ModelWrapper::Llama(
+            load_model::<models::llama::LlamaWithConfig>(
+                &config.model.model_id,
+                &config.model.revision,
+                default_dtype,
+                &device,
+            ).await?
+        )
+    };
     tracing::info!("Model loaded successfully");
 
     // Create shared model state

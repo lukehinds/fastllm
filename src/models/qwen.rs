@@ -1,7 +1,7 @@
 use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_nn::{VarBuilder, Activation};
-use candle_transformers::models::qwen2::{self, Config as QwenConfig, ModelForCausalLM as Qwen};
+use candle_transformers::models::qwen2::{Config as QwenConfig, ModelForCausalLM as Qwen};
 use std::cell::RefCell;
 
 // Wrapper type for cache management
@@ -10,6 +10,9 @@ pub struct QwenCache {
     seqlen_offset: usize,
 }
 
+// Implement Send for QwenCache since it only contains primitive types
+unsafe impl Send for QwenCache {}
+
 impl QwenCache {
     fn new() -> Self {
         Self { seqlen_offset: 0 }
@@ -17,11 +20,33 @@ impl QwenCache {
 
     fn increment_offset(&mut self) {
         self.seqlen_offset += 1;
+        tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
+    }
+
+    fn get_offset(&self) -> usize {
+        self.seqlen_offset
+    }
+
+    fn reset(&mut self) {
+        self.seqlen_offset = 0;
+        tracing::debug!("Cache seqlen_offset reset to 0");
     }
 }
 
+#[derive(Debug)]
 pub struct QwenWithConfig {
     model: RefCell<Qwen>,
+}
+
+impl QwenWithConfig {
+    fn get_head_dim(hidden_size: usize, num_attention_heads: usize) -> usize {
+        let head_dim = hidden_size / num_attention_heads;
+        assert!(
+            head_dim * num_attention_heads == hidden_size,
+            "hidden_size must be divisible by num_attention_heads"
+        );
+        head_dim
+    }
 }
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -44,6 +69,9 @@ pub struct ConfigFile {
 
 impl From<ConfigFile> for QwenConfig {
     fn from(cf: ConfigFile) -> Self {
+        // Validate head dimensions
+        QwenWithConfig::get_head_dim(cf.hidden_size, cf.num_attention_heads);
+        
         Self {
             hidden_size: cf.hidden_size,
             intermediate_size: cf.intermediate_size,
@@ -74,9 +102,15 @@ impl ModelInitializer for QwenWithConfig {
         device: &Device,
     ) -> Result<(Self, Self::Cache)> {
         let qwen_config = QwenConfig::from(config.clone());
+        let head_dim = Self::get_head_dim(qwen_config.hidden_size, qwen_config.num_attention_heads);
+        
         tracing::debug!(
-            "Model config: hidden_size={}, layers={}, heads={}",
-            qwen_config.hidden_size, qwen_config.num_hidden_layers, qwen_config.num_attention_heads
+            "Model config: hidden_size={}, layers={}, heads={}, head_dim={}, max_pos={}",
+            qwen_config.hidden_size,
+            qwen_config.num_hidden_layers,
+            qwen_config.num_attention_heads,
+            head_dim,
+            qwen_config.max_position_embeddings
         );
 
         let vb = VarBuilder::from_tensors(tensors, dtype, device);
@@ -84,7 +118,7 @@ impl ModelInitializer for QwenWithConfig {
         tracing::info!("Initializing model");
         let model = Qwen::new(&qwen_config, vb)?;
 
-        Ok((Self { model: RefCell::new(model), config: qwen_config }, QwenCache::new()))
+        Ok((Self { model: RefCell::new(model) }, QwenCache::new()))
     }
 
     fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
@@ -97,6 +131,14 @@ impl ModelInitializer for QwenWithConfig {
         _pos: usize,  // Position is handled internally by Qwen
         cache: &mut Self::Cache,
     ) -> Result<Tensor> {
+        // Ensure input tensor has correct shape before forward pass
+        let (batch_size, seq_len) = input.dims2()?;
+        tracing::debug!(
+            "Forward pass input shape: batch_size={}, seq_len={}",
+            batch_size,
+            seq_len
+        );
+        
         let output = self.model.borrow_mut().forward(input, cache.seqlen_offset)?;
         cache.increment_offset();
         Ok(output)

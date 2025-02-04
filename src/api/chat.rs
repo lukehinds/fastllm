@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::models::{Model, llama::LlamaWithConfig};
+use crate::models::ModelWrapper;
 
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
@@ -60,7 +60,7 @@ fn default_max_tokens() -> usize {
 }
 
 pub async fn create_chat_completion(
-    State(model): State<Arc<Mutex<Model<LlamaWithConfig>>>>,
+    State(model): State<Arc<Mutex<ModelWrapper>>>,
     Json(request): Json<ChatCompletionRequest>,
 ) -> Result<Json<ChatCompletionResponse>, (StatusCode, Json<super::ErrorResponse>)> {
     // Format the conversation history into a prompt

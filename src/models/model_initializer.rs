@@ -2,7 +2,8 @@ use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use std::collections::HashMap;
 
-pub trait ModelInitializer {
+#[allow(clippy::upper_case_acronyms)]
+pub trait ModelInitializer: Sized {
     type Config;
     type Cache;
 
