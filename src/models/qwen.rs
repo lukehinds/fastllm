@@ -22,6 +22,11 @@ impl QwenCache {
         self.seqlen_offset += 1;
         tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
     }
+
+    fn reset(&mut self) {
+        self.seqlen_offset = 0;
+        tracing::debug!("Cache seqlen_offset reset to 0");
+    }
 }
 
 #[derive(Debug)]
@@ -125,10 +130,16 @@ impl ModelInitializer for QwenWithConfig {
         // Ensure input tensor has correct shape before forward pass
         let (batch_size, seq_len) = input.dims2()?;
         tracing::debug!(
-            "Forward pass input shape: batch_size={}, seq_len={}",
+            "Forward pass input shape: batch_size={}, seq_len={}, seqlen_offset={}",
             batch_size,
-            seq_len
+            seq_len,
+            cache.seqlen_offset
         );
+
+        // For the first token in a new conversation, reset the cache
+        if cache.seqlen_offset == 0 {
+            self.model.borrow_mut().clear_kv_cache();
+        }
         
         let output = self.model.borrow_mut().forward(input, cache.seqlen_offset)?;
         cache.increment_offset();
