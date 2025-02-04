@@ -10,7 +10,7 @@ mod config;
 mod models;
 mod providers;
 
-use models::{load_model, ModelWrapper, llama::LlamaWithConfig, qwen::QwenWithConfig};
+use models::load_model;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
