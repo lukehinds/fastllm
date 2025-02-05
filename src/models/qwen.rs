@@ -22,11 +22,6 @@ impl QwenCache {
         self.seqlen_offset += 1;
         tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
     }
-
-    fn reset(&mut self) {
-        self.seqlen_offset = 0;
-        tracing::debug!("Cache seqlen_offset reset to 0");
-    }
 }
 
 #[derive(Debug)]
