@@ -75,8 +75,19 @@ async fn main() -> Result<()> {
                 &device,
             ).await?
         )
+    } else if config.model.model_id.contains("Mistral") {
+        tracing::info!("Loading Mistral model");
+        models::ModelWrapper::Mistral(
+            load_model::<models::mistral::MistralWithConfig>(
+                &config.model.model_id,
+                &config.model.revision,
+                default_dtype,
+                &device,
+            ).await?
+        )
     } else {
         // Default to Llama for other models
+        tracing::info!("Loading Llama model");
         models::ModelWrapper::Llama(
             load_model::<models::llama::LlamaWithConfig>(
                 &config.model.model_id,
