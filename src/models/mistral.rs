@@ -82,14 +82,6 @@ impl ModelInitializer for MistralWithConfig {
         pos: usize,
         _cache: &mut Self::Cache,
     ) -> Result<Tensor> {
-        // Log model configuration on first token
-        if pos == 0 {
-            tracing::debug!(
-                "Starting new sequence with config: sliding_window={}, max_pos={}",
-                self.config.sliding_window.unwrap_or(0),
-                self.config.max_position_embeddings
-            );
-        }
         // Use RefCell to get mutable access and convert candle_core::Error to anyhow::Error
         Ok(self.model.borrow_mut().forward(input, pos)?)
     }
