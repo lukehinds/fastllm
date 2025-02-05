@@ -3,6 +3,10 @@
 A blazingly fast Rust-based LLM inference system that provides OpenAI-compatible API
 endpoints for chat completion, with support for loading models directly from HuggingFace.
 
+<img width="1383" alt="image" src="https://github.com/user-attachments/assets/69661c72-0d22-46c4-bf03-1003e94b5b3d" />
+
+<img width="1392" alt="image" src="https://github.com/user-attachments/assets/11995b77-575e-423e-b6e7-c02f4280d1aa" />
+
 # 🧪 Experimental
 
 This is a work in progress and the API is not yet stable!
