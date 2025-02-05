@@ -48,7 +48,6 @@ impl From<ConfigFile> for LlamaConfig {
 #[derive(Debug)]
 pub struct LlamaWithConfig {
     model: Llama,
-    config: LlamaConfig,
 }
 
 impl ModelInitializer for LlamaWithConfig {
@@ -77,7 +76,7 @@ impl ModelInitializer for LlamaWithConfig {
         let model = Llama::load(vb, &llama_config)
             .context("Failed to initialize model")?;
 
-        Ok((Self { model, config: llama_config }, cache))
+        Ok((Self { model }, cache))
     }
 
     fn initialize_cache(device: &Device, dtype: DType) -> Result<Self::Cache> {

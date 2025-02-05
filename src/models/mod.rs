@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, Context};
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
@@ -7,7 +7,6 @@ pub mod llama;
 pub mod mistral;
 pub mod qwen;
 pub mod model_initializer;
-pub mod token_output_stream;
 use crate::providers::huggingface;
 
 pub use huggingface::load_model;
@@ -16,6 +15,14 @@ pub use model_initializer::ModelInitializer;
 use llama::LlamaWithConfig;
 use qwen::QwenWithConfig;
 use mistral::MistralWithConfig;
+
+mod cache;
+mod config;
+mod traits;
+
+pub use cache::{ModelCache, CommonCache};
+pub use config::{BaseModelConfig, ModelConfigValidation};
+pub use traits::{ModelForward, ModelGeneration};
 
 pub enum ModelWrapper {
     Llama(Model<LlamaWithConfig>),
@@ -36,9 +43,12 @@ impl std::fmt::Debug for ModelWrapper {
 impl ModelWrapper {
     pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
         match self {
-            ModelWrapper::Llama(model) => model.generate(prompt, max_tokens, temperature),
-            ModelWrapper::Qwen(model) => model.generate(prompt, max_tokens, temperature),
-            ModelWrapper::Mistral(model) => model.generate(prompt, max_tokens, temperature),
+            ModelWrapper::Llama(model) => model.generate(prompt, max_tokens, temperature)
+                .context("Llama generation failed"),
+            ModelWrapper::Qwen(model) => model.generate(prompt, max_tokens, temperature)
+                .context("Qwen generation failed"),
+            ModelWrapper::Mistral(model) => model.generate(prompt, max_tokens, temperature)
+                .context("Mistral generation failed"),
         }
     }
 }

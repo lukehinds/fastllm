@@ -1,7 +1,7 @@
 # 🚀 FastLLM
 
-A blazingly fast Rust-based LLM inference system that provides OpenAI-compatible API
-endpoints for chat completion, with support for loading models directly from HuggingFace.
+A Rust-based LLM inference system that provides OpenAI-compatible API endpoints
+for chat completion, with support for loading models directly from HuggingFace.
 
 # 🧪 Experimental
 
@@ -17,13 +17,13 @@ chat completion endpoint for now and MPS is the only supported device.
 ## Model Support
 
 - [x] TinyLlama/TinyLlama-1.1B-Chat-v1.0
-- [x] Mistral
-- [x] Qwen
+- [x] Mistral7 and derivatives
+- [x] Qwen2.5 and derivatives
 
 ## 📋 TODO
 
 - [ ] Add device autosensing so that we also support CPU, MPS, and CUDA devices.
-- [ ] Add support for more models (qwen, mistral, deepseek, etc.)
+- [ ] Add support for more models (deepseek, etc.)
 - [ ] Add support for more data types (float16, float32, bfloat16, int8, uint8, etc.)
 - [ ] Add support for more features (embedding, completion, etc.)
 - [ ] Provide benchmarks for different models and configurations

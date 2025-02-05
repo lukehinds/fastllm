@@ -1,89 +1,76 @@
-use anyhow::Result;
+use anyhow::{Result, Context};
 use candle_core::{DType, Device, Tensor};
-use candle_nn::{VarBuilder, Activation};
+use candle_nn::VarBuilder;
 use candle_transformers::models::qwen2::{Config as QwenConfig, ModelForCausalLM as Qwen};
+use candle_transformers::generation::LogitsProcessor;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
-// Wrapper type for cache management
-#[derive(Debug)]
-pub struct QwenCache {
-    seqlen_offset: usize,
-}
-
-// Implement Send for QwenCache since it only contains primitive types
-unsafe impl Send for QwenCache {}
-
-impl QwenCache {
-    fn new() -> Self {
-        Self { seqlen_offset: 0 }
-    }
-
-    fn increment_offset(&mut self) {
-        self.seqlen_offset += 1;
-        tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
-    }
-}
+use super::model_initializer::ModelInitializer;
+use super::{ModelCache, CommonCache, BaseModelConfig, ModelConfigValidation, ModelForward, ModelGeneration};
 
 #[derive(Debug)]
 pub struct QwenWithConfig {
     model: RefCell<Qwen>,
 }
 
-impl QwenWithConfig {
-    fn get_head_dim(hidden_size: usize, num_attention_heads: usize) -> usize {
-        let head_dim = hidden_size / num_attention_heads;
-        assert!(
-            head_dim * num_attention_heads == hidden_size,
-            "hidden_size must be divisible by num_attention_heads"
-        );
-        head_dim
-    }
-}
-use serde::Deserialize;
-use std::collections::HashMap;
-use super::model_initializer::ModelInitializer;
-#[derive(Deserialize, Clone)]
-pub struct ConfigFile {
-    pub hidden_size: usize,
-    pub intermediate_size: usize,
-    pub vocab_size: usize,
-    pub num_hidden_layers: usize,
-    pub num_attention_heads: usize,
-    pub num_key_value_heads: Option<usize>,
-    pub rms_norm_eps: f64,
-    pub rope_theta: Option<f64>,
-    pub max_position_embeddings: usize,  // Required for Qwen
-    pub sliding_window: usize,  // Required for Qwen
-    pub max_window_layers: Option<usize>,
-    pub torch_dtype: Option<String>,
-}
+impl From<BaseModelConfig> for QwenConfig {
+    fn from(base: BaseModelConfig) -> Self {
+        let _ = base.validate_head_dimensions()
+            .expect("Invalid head dimensions");
+        
+        base.validate_gqa_config()
+            .expect("Invalid GQA configuration");
 
-impl From<ConfigFile> for QwenConfig {
-    fn from(cf: ConfigFile) -> Self {
-        // Validate head dimensions
-        QwenWithConfig::get_head_dim(cf.hidden_size, cf.num_attention_heads);
         Self {
-            hidden_size: cf.hidden_size,
-            intermediate_size: cf.intermediate_size,
-            vocab_size: cf.vocab_size,
-            num_hidden_layers: cf.num_hidden_layers,
-            num_attention_heads: cf.num_attention_heads,
-            num_key_value_heads: cf.num_key_value_heads.unwrap_or(cf.num_attention_heads),
-            rms_norm_eps: cf.rms_norm_eps,
-            rope_theta: cf.rope_theta.unwrap_or(10000.0),
-            max_position_embeddings: cf.max_position_embeddings,
-            sliding_window: cf.sliding_window,
-            max_window_layers: cf.max_window_layers.unwrap_or(1),
+            hidden_size: base.hidden_size,
+            intermediate_size: base.intermediate_size,
+            vocab_size: base.vocab_size,
+            num_hidden_layers: base.num_hidden_layers,
+            num_attention_heads: base.num_attention_heads,
+            num_key_value_heads: base.num_key_value_heads
+                .unwrap_or(base.num_attention_heads),
+            rms_norm_eps: base.rms_norm_eps,
+            rope_theta: base.rope_theta.unwrap_or(10000.0),
+            max_position_embeddings: base.max_position_embeddings
+                .unwrap_or(32768),
+            sliding_window: base.sliding_window.unwrap_or(4096),
+            max_window_layers: 1,
             tie_word_embeddings: false,
-            use_sliding_window: true,  // Always true since sliding_window is required
-            hidden_act: Activation::Silu,
+            use_sliding_window: true,
+            hidden_act: BaseModelConfig::get_activation(),
         }
     }
 }
 
+impl ModelForward for QwenWithConfig {
+    fn forward_pass(&self, input: &Tensor, cache: &mut dyn ModelCache) -> Result<Tensor> {
+        let (batch_size, seq_len) = input.dims2()?;
+        tracing::debug!(
+            "Forward pass input shape: batch_size={}, seq_len={}, seqlen_offset={}",
+            batch_size,
+            seq_len,
+            cache.get_offset()
+        );
+
+        if cache.get_offset() == 0 {
+            self.clear_cache();
+        }
+
+        let output = self.model.borrow_mut().forward(input, cache.get_offset())?;
+        cache.increment_offset();
+        Ok(output)
+    }
+
+    fn clear_cache(&self) {
+        self.model.borrow_mut().clear_kv_cache();
+        tracing::debug!("KV cache cleared");
+    }
+}
+
 impl ModelInitializer for QwenWithConfig {
-    type Config = ConfigFile;
-    type Cache = QwenCache;
+    type Config = BaseModelConfig;
+    type Cache = CommonCache;
 
     fn initialize_model(
         config: &Self::Config,
@@ -92,49 +79,50 @@ impl ModelInitializer for QwenWithConfig {
         device: &Device,
     ) -> Result<(Self, Self::Cache)> {
         let qwen_config = QwenConfig::from(config.clone());
-        let head_dim = Self::get_head_dim(qwen_config.hidden_size, qwen_config.num_attention_heads);
+        
         tracing::debug!(
-            "Model config: hidden_size={}, layers={}, heads={}, head_dim={}, max_pos={}",
+            "Model config: hidden_size={}, layers={}, heads={}", 
             qwen_config.hidden_size,
             qwen_config.num_hidden_layers,
             qwen_config.num_attention_heads,
-            head_dim,
-            qwen_config.max_position_embeddings
         );
 
         let vb = VarBuilder::from_tensors(tensors, dtype, device);
-
-        tracing::info!("Initializing model");
         let model = Qwen::new(&qwen_config, vb)?;
 
-        Ok((Self { model: RefCell::new(model) }, QwenCache::new()))
+        Ok((Self { 
+            model: RefCell::new(model),
+        }, CommonCache::new()))
     }
 
     fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
-        Ok(QwenCache::new())
+        Ok(CommonCache::new())
     }
 
     fn forward(
         &self,
         input: &Tensor,
-        _pos: usize,  // Position is handled internally by Qwen
+        _pos: usize,
         cache: &mut Self::Cache,
     ) -> Result<Tensor> {
-        // Ensure input tensor has correct shape before forward pass
-        let (batch_size, seq_len) = input.dims2()?;
-        tracing::debug!(
-            "Forward pass input shape: batch_size={}, seq_len={}, seqlen_offset={}",
-            batch_size,
-            seq_len,
-            cache.seqlen_offset
-        );
+        self.forward_pass(input, cache)
+    }
+}
 
-        // For the first token in a new conversation, reset the cache
-        if cache.seqlen_offset == 0 {
-            self.model.borrow_mut().clear_kv_cache();
-        }
-        let output = self.model.borrow_mut().forward(input, cache.seqlen_offset)?;
-        cache.increment_offset();
-        Ok(output)
+#[allow(unused)]
+impl ModelGeneration for QwenWithConfig {
+    fn sample_next_token(&self, logits: &Tensor, temperature: f32) -> Result<usize> {
+        let mut logits_processor = LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
+        logits_processor.sample(logits)
+            .map(|x| x as usize)
+            .context("Failed to sample next token")
+    }
+
+    fn is_eos_token(&self, token_id: usize) -> bool {
+        token_id == self.get_eos_token_id().unwrap_or(2)
+    }
+
+    fn get_eos_token_id(&self) -> Option<usize> {
+        Some(2)
     }
 }
