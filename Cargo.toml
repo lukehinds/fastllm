@@ -3,6 +3,10 @@ name = "fastllm"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+metal = []
+accelerate = []
+
 [dependencies]
 axum = { version = "0.7.9", features = ["http1"] }
 tokio = { version = "1.35", features = ["full"] }
