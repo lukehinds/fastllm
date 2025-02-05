@@ -12,9 +12,9 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-http = { version = "0.5", features = ["trace"] }
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+candle-core = { git = "https://github.com/huggingface/candle.git" }
+candle-nn = { git = "https://github.com/huggingface/candle.git" }
+candle-transformers = { git = "https://github.com/huggingface/candle.git" }
 tokenizers = "0.21.0"
 hf-hub = { version = "0.3", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
@@ -24,3 +24,13 @@ chrono = "0.4"
 futures = "0.3.30"
 futures-util = "0.3.30"
 dotenv = "0.15.0"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
