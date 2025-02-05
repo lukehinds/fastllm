@@ -57,10 +57,45 @@ async fn main() -> Result<()> {
     
     tracing::info!("Config loaded: {:?}", config);
 
-    // Need to make device configurable or autosensing so that we also support
-    // CPU, MPS, and CUDA devices.
-    let device = candle_core::Device::new_metal(0)?;
-    // let device = candle_core::Device::Cpu;  // Use CPU device
+    // Initialize device based on platform availability
+    #[cfg(target_os = "macos")]
+    let device = {
+        tracing::info!("MacOS detected - attempting to use Metal device");
+        match candle_core::Device::new_metal(0) {
+            Ok(metal_device) => {
+                tracing::info!("Successfully initialized Metal device");
+                metal_device
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize Metal device: {}. Falling back to CPU", e);
+                candle_core::Device::Cpu
+            }
+        }
+    };
+
+    #[cfg(target_os = "linux")]
+    let device = {
+        tracing::info!("Linux detected - attempting to use CUDA device");
+        match candle_core::Device::cuda_if_available(0) {
+            Ok(cuda_device) => {
+                tracing::info!("Successfully initialized CUDA device");
+                cuda_device
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize CUDA device: {}. Falling back to CPU", e);
+                candle_core::Device::Cpu
+            }
+        }
+    };
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let device = {
+        tracing::info!("Platform detected: {}. Using CPU device", std::env::consts::OS);
+        candle_core::Device::Cpu
+    };
+
+    tracing::info!("Final device selection: {:?}", device);
+
     let default_dtype = models::default_dtype();
     tracing::info!("Using default dtype: {:?} (may be overridden by model's config.json)", default_dtype);
     
