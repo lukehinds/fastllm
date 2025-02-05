@@ -63,6 +63,20 @@ pub async fn create_chat_completion(
     State(model): State<Arc<Mutex<ModelWrapper>>>,
     Json(request): Json<ChatCompletionRequest>,
 ) -> Result<Json<ChatCompletionResponse>, (StatusCode, Json<super::ErrorResponse>)> {
+    // Validate that the requested model matches the loaded model
+    let model_lock = model.lock().await;
+    let loaded_model_id = model_lock.model_id();
+    if request.model != loaded_model_id {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(super::ErrorResponse::new(
+                format!("Requested model '{}' does not match loaded model '{}'", request.model, loaded_model_id),
+                "model_mismatch",
+            )),
+        ));
+    }
+    drop(model_lock);  // Release the lock before generation
+
     // Format the conversation history into a prompt
     let prompt = format_messages(&request.messages);
     tracing::debug!("Formatted prompt: {}", prompt);
@@ -109,12 +123,17 @@ pub async fn create_chat_completion(
     Ok(Json(response))
 }
 
-pub async fn list_models() -> Json<serde_json::Value> {
+pub async fn list_models(
+    State(model): State<Arc<Mutex<ModelWrapper>>>,
+) -> Json<serde_json::Value> {
+    let model = model.lock().await;
+    let model_id = model.model_id();
+    
     Json(serde_json::json!({
         "object": "list",
         "data": [
             {
-                "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+                "id": model_id,
                 "object": "model",
                 "created": chrono::Utc::now().timestamp(),
                 "owned_by": "local",

@@ -73,7 +73,8 @@ async fn main() -> Result<()> {
                 &config.model.revision,
                 default_dtype,
                 &device,
-            ).await?
+            ).await?,
+            config.model.model_id.clone()
         )
     } else if config.model.model_id.contains("Mistral") {
         tracing::info!("Loading Mistral model");
@@ -83,7 +84,8 @@ async fn main() -> Result<()> {
                 &config.model.revision,
                 default_dtype,
                 &device,
-            ).await?
+            ).await?,
+            config.model.model_id.clone()
         )
     } else {
         // Default to Llama for other models
@@ -94,7 +96,8 @@ async fn main() -> Result<()> {
                 &config.model.revision,
                 default_dtype,
                 &device,
-            ).await?
+            ).await?,
+            config.model.model_id.clone()
         )
     };
     tracing::info!("Model loaded successfully");
