@@ -87,12 +87,11 @@ impl ModelInitializer for LlamaWithConfig {
 
         Ok((Self { model, config: llama_config }, cache))
     }
-        // Ok((Self { model }, cache))
 
     fn initialize_cache(device: &Device, dtype: DType) -> Result<Self::Cache> {
-        // Create a default config for cache initialization
+        // This method can't access `self`, so we need to create a default config
         // These values are for TinyLlama-1.1B-Chat-v1.0
-        let config = LlamaConfig {
+        let default_config = LlamaConfig {
             hidden_size: 2048,
             intermediate_size: 5632,
             vocab_size: 32000,
@@ -108,7 +107,7 @@ impl ModelInitializer for LlamaWithConfig {
             tie_word_embeddings: false,
             max_position_embeddings: 2048,
         };
-        Cache::new(true, dtype, &config, device)
+        Cache::new(true, dtype, &default_config, device)
             .context("Failed to initialize model cache")
     }
 
@@ -118,12 +117,6 @@ impl ModelInitializer for LlamaWithConfig {
         pos: usize,
         cache: &mut Self::Cache,
     ) -> Result<Tensor> {
-        // If this is the start of a new sequence (pos == 0), we need to ensure
-        // the cache is using the correct configuration
-        if pos == 0 {
-            tracing::debug!("Reinitializing cache with model config at pos 0");
-            *cache = Cache::new(true, input.dtype(), &self.config, input.device())?;
-        }
         Ok(self.model.forward(input, pos, cache)?)
     }
 }
