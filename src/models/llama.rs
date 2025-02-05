@@ -24,14 +24,6 @@ pub struct ConfigFile {
     pub torch_dtype: Option<String>,
 }
 
-// pub fn torch_dtype_to_candle(dtype: &str) -> DType {
-//     match dtype {
-//         "float32" | "float64" => DType::F32,
-//         "float16" | "bfloat16" => DType::BF16, // Map both float16 and bfloat16 to BF16
-//         _ => DType::F32, // default to F32 for unknown types
-//     }
-// }
-
 impl From<ConfigFile> for LlamaConfig {
     fn from(cf: ConfigFile) -> Self {
         Self {
@@ -53,9 +45,9 @@ impl From<ConfigFile> for LlamaConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct LlamaWithConfig {
     model: Llama,
-    config: LlamaConfig,
 }
 
 impl ModelInitializer for LlamaWithConfig {
@@ -84,7 +76,7 @@ impl ModelInitializer for LlamaWithConfig {
         let model = Llama::load(vb, &llama_config)
             .context("Failed to initialize model")?;
 
-        Ok((Self { model, config: llama_config }, cache))
+        Ok((Self { model }, cache))
     }
 
     fn initialize_cache(device: &Device, dtype: DType) -> Result<Self::Cache> {

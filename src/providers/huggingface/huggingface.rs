@@ -2,19 +2,22 @@ use std::env;
 use anyhow::{Result, Context};
 use candle_core::{DType, Device};
 use super::dtype_utils::{get_dtype, validate_dtype_compatibility};
+use super::tokenizer::load_tokenizer;
 use hf_hub::{api::sync::ApiBuilder, Repo, RepoType};
-use tokenizers::Tokenizer;
+use serde::de::DeserializeOwned;
 
 use crate::models::Model;
 use crate::models::model_initializer::ModelInitializer;
-use crate::models::llama::ConfigFile;
 
-pub async fn load_model<M: ModelInitializer<Config = ConfigFile>>(
+pub async fn load_model<M: ModelInitializer>(
     model_id: &str,
     revision: &str,
     default_dtype: DType,
     device: &Device,
-) -> Result<Model<M>> {
+) -> Result<Model<M>>
+where
+    M::Config: DeserializeOwned,
+{
     tracing::info!("Initializing HuggingFace API client");
 
     let token = env::var("HF_TOKEN").ok();
@@ -38,13 +41,13 @@ pub async fn load_model<M: ModelInitializer<Config = ConfigFile>>(
         .context("Failed to download config.json")?;
 
     tracing::info!("Loading tokenizer from {:?}", tokenizer_path);
-    let tokenizer = Tokenizer::from_file(&tokenizer_path)
-        .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {}", e))?;
+    let tokenizer = load_tokenizer(model_id, &tokenizer_path)
+        .context("Failed to load tokenizer")?;
 
     tracing::info!("Loading model configuration");
     let config_content = std::fs::read_to_string(&config_path)
         .context("Failed to read config.json")?;
-    let config_file: ConfigFile = serde_json::from_str(&config_content)
+    let config_file: M::Config = serde_json::from_str(&config_content)
         .context("Failed to parse config.json")?;
 
     tracing::info!("Loading model weights");
@@ -94,7 +97,7 @@ pub async fn load_model<M: ModelInitializer<Config = ConfigFile>>(
         combined_tensors
     };
 
-    let dtype = get_dtype(config_file.torch_dtype.as_ref(), default_dtype);
+    let dtype = get_dtype(None, default_dtype); // We'll get dtype from model-specific config
     validate_dtype_compatibility(dtype, model_id);
 
     let (model, cache) = M::initialize_model(&config_file, tensors, dtype, device)?;

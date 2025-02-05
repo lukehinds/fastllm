@@ -1,14 +1,57 @@
-use anyhow::Result;
+use anyhow::{Result, Context};
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
 
 pub mod llama;
+pub mod mistral;
+pub mod qwen;
 pub mod model_initializer;
 use crate::providers::huggingface;
 
 pub use huggingface::load_model;
-use model_initializer::ModelInitializer;
+pub use model_initializer::ModelInitializer;
+
+use llama::LlamaWithConfig;
+use qwen::QwenWithConfig;
+use mistral::MistralWithConfig;
+
+mod cache;
+mod config;
+mod traits;
+
+pub use cache::{ModelCache, CommonCache};
+pub use config::{BaseModelConfig, ModelConfigValidation};
+pub use traits::{ModelForward, ModelGeneration};
+
+pub enum ModelWrapper {
+    Llama(Model<LlamaWithConfig>),
+    Qwen(Model<QwenWithConfig>),
+    Mistral(Model<MistralWithConfig>)
+}
+
+impl std::fmt::Debug for ModelWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Llama(_) => write!(f, "ModelWrapper::Llama"),
+            Self::Qwen(_) => write!(f, "ModelWrapper::Qwen"),
+            Self::Mistral(_) => write!(f, "ModelWrapper::Mistral"),
+        }
+    }
+}
+
+impl ModelWrapper {
+    pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
+        match self {
+            ModelWrapper::Llama(model) => model.generate(prompt, max_tokens, temperature)
+                .context("Llama generation failed"),
+            ModelWrapper::Qwen(model) => model.generate(prompt, max_tokens, temperature)
+                .context("Qwen generation failed"),
+            ModelWrapper::Mistral(model) => model.generate(prompt, max_tokens, temperature)
+                .context("Mistral generation failed"),
+        }
+    }
+}
 
 pub struct Model<M: ModelInitializer> {
     tokenizer: Tokenizer,
@@ -82,7 +125,8 @@ impl<M: ModelInitializer> Model<M> {
 
             // Get the logits for the last position
             // The logits tensor has shape [batch_size=1, vocab_size]
-            let last_logits = logits.get(0)?;  // Get first batch
+            // Reshape logits to [batch_size=1, vocab_size] before sampling
+            let last_logits = logits.get(0)?.flatten_all()?;
             tracing::debug!("Last logits dims: {:?}", last_logits.dims());
 
             // Sample the next token
