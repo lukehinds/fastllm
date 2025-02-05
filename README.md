@@ -5,14 +5,13 @@ endpoints for chat completion, with support for loading models directly from Hug
 
 # 🧪 Experimental
 
-This is a work in progress and the API is not yet stable. We only support the
-chat completion endpoint for now and MPS is the only supported device.
+This is a work in progress and the API is not yet stable!
 
 ## ✨ Features
 
 - 🔄 OpenAI-compatible chat completion API endpoint
 - 🤗 Support for loading models from HuggingFace Hub
-- 🍎 MPS Metal GPU acceleration (macOS only)
+- 🍎 MPS Metal GPU acceleration (cuda, cpu coming next)
 
 ## 📋 TODO
 
