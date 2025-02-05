@@ -25,29 +25,37 @@ pub use config::{BaseModelConfig, ModelConfigValidation};
 pub use traits::{ModelForward, ModelGeneration};
 
 pub enum ModelWrapper {
-    Llama(Model<LlamaWithConfig>),
-    Qwen(Model<QwenWithConfig>),
-    Mistral(Model<MistralWithConfig>)
+    Llama(Model<LlamaWithConfig>, String),
+    Qwen(Model<QwenWithConfig>, String),
+    Mistral(Model<MistralWithConfig>, String)
 }
 
 impl std::fmt::Debug for ModelWrapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Llama(_) => write!(f, "ModelWrapper::Llama"),
-            Self::Qwen(_) => write!(f, "ModelWrapper::Qwen"),
-            Self::Mistral(_) => write!(f, "ModelWrapper::Mistral"),
+            Self::Llama(_, id) => write!(f, "ModelWrapper::Llama({})", id),
+            Self::Qwen(_, id) => write!(f, "ModelWrapper::Qwen({})", id),
+            Self::Mistral(_, id) => write!(f, "ModelWrapper::Mistral({})", id),
         }
     }
 }
 
 impl ModelWrapper {
+    pub fn model_id(&self) -> &str {
+        match self {
+            ModelWrapper::Llama(_, id) => id,
+            ModelWrapper::Qwen(_, id) => id,
+            ModelWrapper::Mistral(_, id) => id,
+        }
+    }
+
     pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
         match self {
-            ModelWrapper::Llama(model) => model.generate(prompt, max_tokens, temperature)
+            ModelWrapper::Llama(model, _) => model.generate(prompt, max_tokens, temperature)
                 .context("Llama generation failed"),
-            ModelWrapper::Qwen(model) => model.generate(prompt, max_tokens, temperature)
+            ModelWrapper::Qwen(model, _) => model.generate(prompt, max_tokens, temperature)
                 .context("Qwen generation failed"),
-            ModelWrapper::Mistral(model) => model.generate(prompt, max_tokens, temperature)
+            ModelWrapper::Mistral(model, _) => model.generate(prompt, max_tokens, temperature)
                 .context("Mistral generation failed"),
         }
     }
