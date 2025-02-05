@@ -7,6 +7,7 @@ pub mod llama;
 pub mod mistral;
 pub mod qwen;
 pub mod model_initializer;
+pub mod token_output_stream;
 use crate::providers::huggingface;
 
 pub use huggingface::load_model;
@@ -14,10 +15,12 @@ pub use model_initializer::ModelInitializer;
 
 use llama::LlamaWithConfig;
 use qwen::QwenWithConfig;
+use mistral::MistralWithConfig;
 
 pub enum ModelWrapper {
     Llama(Model<LlamaWithConfig>),
     Qwen(Model<QwenWithConfig>),
+    Mistral(Model<MistralWithConfig>)
 }
 
 impl std::fmt::Debug for ModelWrapper {
@@ -25,6 +28,7 @@ impl std::fmt::Debug for ModelWrapper {
         match self {
             Self::Llama(_) => write!(f, "ModelWrapper::Llama"),
             Self::Qwen(_) => write!(f, "ModelWrapper::Qwen"),
+            Self::Mistral(_) => write!(f, "ModelWrapper::Mistral"),
         }
     }
 }
@@ -34,6 +38,7 @@ impl ModelWrapper {
         match self {
             ModelWrapper::Llama(model) => model.generate(prompt, max_tokens, temperature),
             ModelWrapper::Qwen(model) => model.generate(prompt, max_tokens, temperature),
+            ModelWrapper::Mistral(model) => model.generate(prompt, max_tokens, temperature),
         }
     }
 }

@@ -22,11 +22,6 @@ impl QwenCache {
         self.seqlen_offset += 1;
         tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
     }
-
-    fn reset(&mut self) {
-        self.seqlen_offset = 0;
-        tracing::debug!("Cache seqlen_offset reset to 0");
-    }
 }
 
 #[derive(Debug)]
@@ -67,7 +62,6 @@ impl From<ConfigFile> for QwenConfig {
     fn from(cf: ConfigFile) -> Self {
         // Validate head dimensions
         QwenWithConfig::get_head_dim(cf.hidden_size, cf.num_attention_heads);
-        
         Self {
             hidden_size: cf.hidden_size,
             intermediate_size: cf.intermediate_size,
@@ -99,7 +93,6 @@ impl ModelInitializer for QwenWithConfig {
     ) -> Result<(Self, Self::Cache)> {
         let qwen_config = QwenConfig::from(config.clone());
         let head_dim = Self::get_head_dim(qwen_config.hidden_size, qwen_config.num_attention_heads);
-        
         tracing::debug!(
             "Model config: hidden_size={}, layers={}, heads={}, head_dim={}, max_pos={}",
             qwen_config.hidden_size,
@@ -140,7 +133,6 @@ impl ModelInitializer for QwenWithConfig {
         if cache.seqlen_offset == 0 {
             self.model.borrow_mut().clear_kv_cache();
         }
-        
         let output = self.model.borrow_mut().forward(input, cache.seqlen_offset)?;
         cache.increment_offset();
         Ok(output)
