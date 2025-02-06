@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "--cfg cpu_only"  # Default to CPU-only builds
 
 jobs:
   test:
@@ -33,14 +34,36 @@ jobs:
       - name: Run tests
         run: cargo test
 
-  build:
-    name: Build
+  build-cpu:
+    name: Build (CPU)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      
+      - name: Build
+        run: cargo build --verbose
+
+  build-cuda:
+    name: Build (CUDA)
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: ""  # Clear CPU-only flag
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install CUDA
+        uses: Jimver/cuda-toolkit@v0.2.11
+        with:
+          cuda: '12.1.0'
       
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2

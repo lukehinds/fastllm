@@ -24,6 +24,51 @@ struct Args {
     model: Option<String>,
 }
 
+#[cfg(not(cpu_only))]
+fn get_device() -> candle_core::Device {
+    // Your existing device selection code
+    #[cfg(target_os = "macos")]
+    let device = {
+        tracing::info!("MacOS detected - attempting to use Metal device");
+        match candle_core::Device::new_metal(0) {
+            Ok(metal_device) => {
+                tracing::info!("Successfully initialized Metal device");
+                metal_device
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize Metal device: {}. Falling back to CPU", e);
+                candle_core::Device::Cpu
+            }
+        }
+    };
+
+    #[cfg(target_os = "linux")]
+    let device = {
+        tracing::info!("Linux detected - attempting to use CUDA device");
+        match candle_core::Device::cuda_if_available(0) {
+            Ok(cuda_device) => {
+                tracing::info!("Successfully initialized CUDA device");
+                cuda_device
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize CUDA device: {}. Falling back to CPU", e);
+                candle_core::Device::Cpu
+            }
+        }
+    };
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let device = candle_core::Device::Cpu;
+
+    device
+}
+
+#[cfg(cpu_only)]
+fn get_device() -> candle_core::Device {
+    tracing::info!("Running in CPU-only mode");
+    candle_core::Device::Cpu
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging with more production-ready settings
@@ -57,43 +102,7 @@ async fn main() -> Result<()> {
     
     tracing::info!("Config loaded: {:?}", config);
 
-    // Initialize device based on platform availability
-    #[cfg(target_os = "macos")]
-    let device = {
-        tracing::info!("MacOS detected - attempting to use Metal device");
-        match candle_core::Device::new_metal(0) {
-            Ok(metal_device) => {
-                tracing::info!("Successfully initialized Metal device");
-                metal_device
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize Metal device: {}. Falling back to CPU", e);
-                candle_core::Device::Cpu
-            }
-        }
-    };
-
-    #[cfg(target_os = "linux")]
-    let device = {
-        tracing::info!("Linux detected - attempting to use CUDA device");
-        match candle_core::Device::cuda_if_available(0) {
-            Ok(cuda_device) => {
-                tracing::info!("Successfully initialized CUDA device");
-                cuda_device
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize CUDA device: {}. Falling back to CPU", e);
-                candle_core::Device::Cpu
-            }
-        }
-    };
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let device = {
-        tracing::info!("Platform detected: {}. Using CPU device", std::env::consts::OS);
-        candle_core::Device::Cpu
-    };
-
+    let device = get_device();
     tracing::info!("Final device selection: {:?}", device);
 
     let default_dtype = models::default_dtype();
