@@ -15,8 +15,8 @@ This is a work in progress and the API is not yet stable!
 
 - 🔄 OpenAI-compatible chat completion API endpoint
 - 🧮 Text embeddings API endpoint
-- 🤗 Support for loading models from HuggingFace Hub
-- 🍎 MPS Metal GPU acceleration (cuda, cpu coming next)
+- 🤗 Load models from HuggingFace Hub (sentence-transformers, qwen, etc.)
+- 🍎 MPS Metal, CUDA, and CPU (Auto-detect)
 
 ## Model Support
 
@@ -27,11 +27,9 @@ This is a work in progress and the API is not yet stable!
 
 ## 📋 TODO
 
-- [ ] Add device autosensing so that we also support CPU, MPS, and CUDA devices.
 - [ ] Add support for more models (deepseek, etc.)
 - [ ] Add support for more data types (float16, float32, bfloat16, int8, uint8, etc.)
-- [ ] Add support for more features (completion, etc.)
-- [ ] Provide benchmarks for different models and configurations
+- [ ] Provide benchmarks for different models and configurations compared to other LLM servers
 - [ ] Add support for model listing at /v1/models
 
 ## 🛠️ Prerequisites
