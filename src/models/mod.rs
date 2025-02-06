@@ -2,6 +2,7 @@ use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
+#[allow(unused_imports)]
 use std::collections::HashMap;
 
 pub mod llama;
