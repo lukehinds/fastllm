@@ -48,4 +48,89 @@ impl ModelConfigValidation for BaseModelConfig {
         }
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_head_dimensions() {
+        let config = BaseModelConfig {
+            hidden_size: 512,
+            intermediate_size: 2048,
+            vocab_size: 32000,
+            num_hidden_layers: 8,
+            num_attention_heads: 8,
+            num_key_value_heads: Some(8),
+            rms_norm_eps: 1e-6,
+            rope_theta: Some(10000.0),
+            max_position_embeddings: Some(2048),
+            sliding_window: Some(512),
+            torch_dtype: None,
+        };
+
+        let head_dim = config.validate_head_dimensions().unwrap();
+        assert_eq!(head_dim, 64, "Head dimension should be 64");
+    }
+
+    #[test]
+    fn test_invalid_head_dimensions() {
+        let config = BaseModelConfig {
+            hidden_size: 512,
+            intermediate_size: 2048,
+            vocab_size: 32000,
+            num_hidden_layers: 8,
+            num_attention_heads: 7, // Not divisible evenly
+            num_key_value_heads: Some(7),
+            rms_norm_eps: 1e-6,
+            rope_theta: Some(10000.0),
+            max_position_embeddings: Some(2048),
+            sliding_window: Some(512),
+            torch_dtype: None,
+        };
+
+        assert!(config.validate_head_dimensions().is_err(), 
+            "Should error when hidden_size not divisible by num_attention_heads");
+    }
+
+    #[test]
+    fn test_valid_gqa_config() {
+        let config = BaseModelConfig {
+            hidden_size: 512,
+            intermediate_size: 2048,
+            vocab_size: 32000,
+            num_hidden_layers: 8,
+            num_attention_heads: 8,
+            num_key_value_heads: Some(4), // 8 is divisible by 4
+            rms_norm_eps: 1e-6,
+            rope_theta: Some(10000.0),
+            max_position_embeddings: Some(2048),
+            sliding_window: Some(512),
+            torch_dtype: None,
+        };
+
+        assert!(config.validate_gqa_config().is_ok(), 
+            "Valid GQA config should pass validation");
+    }
+
+    #[test]
+    fn test_invalid_gqa_config() {
+        let config = BaseModelConfig {
+            hidden_size: 512,
+            intermediate_size: 2048,
+            vocab_size: 32000,
+            num_hidden_layers: 8,
+            num_attention_heads: 8,
+            num_key_value_heads: Some(3), // 8 is not divisible by 3
+            rms_norm_eps: 1e-6,
+            rope_theta: Some(10000.0),
+            max_position_embeddings: Some(2048),
+            sliding_window: Some(512),
+            torch_dtype: None,
+        };
+
+        assert!(config.validate_gqa_config().is_err(),
+            "Should error when num_attention_heads not divisible by num_key_value_heads");
+    }
 } 

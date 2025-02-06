@@ -32,4 +32,24 @@ impl ModelCache for CommonCache {
     fn get_offset(&self) -> usize {
         self.seqlen_offset
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_common_cache_operations() {
+        let mut cache = CommonCache::new();
+        assert_eq!(cache.get_offset(), 0, "Initial offset should be 0");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 1, "Offset should be 1 after increment");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 2, "Offset should be 2 after second increment");
+
+        cache.reset();
+        assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
+    }
 } 

@@ -2,6 +2,7 @@ use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
+use std::collections::HashMap;
 
 pub mod llama;
 pub mod mistral;
@@ -26,11 +27,45 @@ pub use config::{BaseModelConfig, ModelConfigValidation};
 pub use traits::{ModelForward, ModelGeneration};
 use embeddings::{EmbeddingModel, EmbeddingOutput};
 
+#[cfg(test)]
+#[derive(Debug)]
+pub(crate) struct MockLlamaWithConfig {}
+
+#[cfg(test)]
+impl ModelInitializer for MockLlamaWithConfig {
+    type Config = BaseModelConfig;
+    type Cache = CommonCache;
+
+    fn initialize_model(
+        _config: &Self::Config,
+        _tensors: HashMap<String, Tensor>,
+        _dtype: DType,
+        _device: &Device,
+    ) -> Result<(Self, Self::Cache)> {
+        Ok((Self {}, CommonCache::new()))
+    }
+
+    fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
+        Ok(CommonCache::new())
+    }
+
+    fn forward(
+        &self,
+        _input: &Tensor,
+        _pos: usize,
+        _cache: &mut Self::Cache,
+    ) -> Result<Tensor> {
+        unimplemented!()
+    }
+}
+
 pub enum ModelWrapper {
     Llama(Model<LlamaWithConfig>, String),
     Qwen(Model<QwenWithConfig>, String),
     Mistral(Model<MistralWithConfig>, String),
     Embedding(Box<dyn EmbeddingModel + Send>),
+    #[cfg(test)]
+    Test(Model<MockLlamaWithConfig>, String),  // Now MockLlamaWithConfig is in scope
 }
 
 impl std::fmt::Debug for ModelWrapper {
@@ -40,6 +75,8 @@ impl std::fmt::Debug for ModelWrapper {
             Self::Qwen(_, id) => write!(f, "ModelWrapper::Qwen({})", id),
             Self::Mistral(_, id) => write!(f, "ModelWrapper::Mistral({})", id),
             Self::Embedding(model) => write!(f, "ModelWrapper::Embedding({})", model.model_id()),
+            #[cfg(test)]
+            Self::Test(_, id) => write!(f, "ModelWrapper::Test({})", id),
         }
     }
 }
@@ -47,35 +84,43 @@ impl std::fmt::Debug for ModelWrapper {
 impl ModelWrapper {
     pub fn model_id(&self) -> String {
         match self {
-            ModelWrapper::Llama(_, id) => id.clone(),
-            ModelWrapper::Qwen(_, id) => id.clone(),
-            ModelWrapper::Mistral(_, id) => id.clone(),
-            ModelWrapper::Embedding(model) => model.model_id(),
+            #[cfg(test)]
+            Self::Test(_, id) => id.clone(),
+            Self::Llama(_, id) => id.clone(),
+            Self::Qwen(_, id) => id.clone(),
+            Self::Mistral(_, id) => id.clone(),
+            Self::Embedding(model) => model.model_id(),
         }
     }
 
     pub fn embedding_size(&self) -> usize {
         match self {
-            ModelWrapper::Llama(_, _) | ModelWrapper::Qwen(_, _) | ModelWrapper::Mistral(_, _) => 
+            #[cfg(test)]
+            Self::Test(_, _) => panic!("Chat models do not support embeddings"),
+            Self::Llama(_, _) | Self::Qwen(_, _) | Self::Mistral(_, _) => 
                 panic!("Chat models do not support embeddings"),
-            ModelWrapper::Embedding(model) => model.embedding_size(),
+            Self::Embedding(model) => model.embedding_size(),
         }
     }
 
     pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
         match self {
-            ModelWrapper::Llama(model, _) => model.generate(prompt, max_tokens, temperature),
-            ModelWrapper::Qwen(model, _) => model.generate(prompt, max_tokens, temperature),
-            ModelWrapper::Mistral(model, _) => model.generate(prompt, max_tokens, temperature),
-            ModelWrapper::Embedding(_) => Err(anyhow::anyhow!("Embedding models do not support text generation")),
+            #[cfg(test)]
+            Self::Test(model, _) => model.generate(prompt, max_tokens, temperature),
+            Self::Llama(model, _) => model.generate(prompt, max_tokens, temperature),
+            Self::Qwen(model, _) => model.generate(prompt, max_tokens, temperature),
+            Self::Mistral(model, _) => model.generate(prompt, max_tokens, temperature),
+            Self::Embedding(_) => Err(anyhow::anyhow!("Embedding models do not support text generation")),
         }
     }
 
     pub fn embed(&self, text: &str) -> Result<EmbeddingOutput> {
         match self {
-            ModelWrapper::Llama(_, _) | ModelWrapper::Qwen(_, _) | ModelWrapper::Mistral(_, _) => 
+            #[cfg(test)]
+            Self::Test(_, _) => Err(anyhow::anyhow!("Chat models do not support embeddings")),
+            Self::Llama(_, _) | Self::Qwen(_, _) | Self::Mistral(_, _) => 
                 Err(anyhow::anyhow!("Chat models do not support embeddings")),
-            ModelWrapper::Embedding(model) => model.embed(text),
+            Self::Embedding(model) => model.embed(text),
         }
     }
 }
@@ -192,4 +237,87 @@ impl<M: ModelInitializer> Model<M> {
 
 pub fn default_dtype() -> DType {
     DType::BF16  // Default to BF16 since that's what the model expects
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokenizers::{Tokenizer, models::bpe::BPE};
+
+    // Create a simpler mock tokenizer
+    fn create_test_tokenizer() -> Tokenizer {
+        // Create a minimal BPE model
+        let vocab = std::collections::HashMap::from([
+            ("test".into(), 0),
+            ("token".into(), 1),
+            ("<s>".into(), 2),
+            ("</s>".into(), 3),
+        ]);
+        let merges = vec![];
+        let bpe = BPE::new(vocab, merges);
+        
+        // Create tokenizer with the BPE model
+        Tokenizer::new(bpe)
+    }
+
+    // Instead of using catch_unwind, let's test the panic directly
+    #[test]
+    #[should_panic(expected = "Chat models do not support embeddings")]
+    fn test_embedding_size_error() {
+        let model_id = "test-model";
+        let wrapper = ModelWrapper::Test(
+            Model::new(
+                create_test_tokenizer(),
+                MockLlamaWithConfig {},
+                Device::Cpu,
+                CommonCache::new(),
+            ),
+            model_id.to_string()
+        );
+
+        wrapper.embedding_size();
+    }
+
+    #[test]
+    fn test_model_wrapper_model_id() {
+        let model_id = "test-model";
+        let wrapper = ModelWrapper::Test(
+            Model::new(
+                create_test_tokenizer(),
+                MockLlamaWithConfig {},
+                Device::Cpu,
+                CommonCache::new(),
+            ),
+            model_id.to_string()
+        );
+
+        assert_eq!(wrapper.model_id(), model_id);
+    }
+
+    #[test]
+    fn test_default_dtype() {
+        assert_eq!(default_dtype(), DType::BF16);
+    }
+
+    #[test]
+    fn test_generate_error_on_embedding_model() {
+        let mut wrapper = ModelWrapper::Embedding(Box::new(MockEmbeddingModel {}));
+        let result = wrapper.generate("test prompt", 10, 0.7);
+        assert!(result.is_err());
+    }
+
+    // Mock implementation for testing
+    struct MockEmbeddingModel {}
+
+    impl EmbeddingModel for MockEmbeddingModel {
+        fn embed(&self, _text: &str) -> Result<EmbeddingOutput> {
+            unimplemented!()
+        }
+        fn model_id(&self) -> String {
+            "mock-model".to_string()
+        }
+        fn embedding_size(&self) -> usize {
+            384
+        }
+    }
 }
