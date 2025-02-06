@@ -1,4 +1,4 @@
-use anyhow::{Result, Context};
+use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
@@ -7,8 +7,9 @@ pub mod llama;
 pub mod mistral;
 pub mod qwen;
 pub mod model_initializer;
-use crate::providers::huggingface;
+pub mod embeddings;
 
+use crate::providers::huggingface;
 pub use huggingface::load_model;
 pub use model_initializer::ModelInitializer;
 
@@ -23,11 +24,13 @@ mod traits;
 pub use cache::{ModelCache, CommonCache};
 pub use config::{BaseModelConfig, ModelConfigValidation};
 pub use traits::{ModelForward, ModelGeneration};
+use embeddings::{EmbeddingModel, EmbeddingOutput};
 
 pub enum ModelWrapper {
     Llama(Model<LlamaWithConfig>, String),
     Qwen(Model<QwenWithConfig>, String),
-    Mistral(Model<MistralWithConfig>, String)
+    Mistral(Model<MistralWithConfig>, String),
+    Embedding(Box<dyn EmbeddingModel + Send>),
 }
 
 impl std::fmt::Debug for ModelWrapper {
@@ -36,27 +39,43 @@ impl std::fmt::Debug for ModelWrapper {
             Self::Llama(_, id) => write!(f, "ModelWrapper::Llama({})", id),
             Self::Qwen(_, id) => write!(f, "ModelWrapper::Qwen({})", id),
             Self::Mistral(_, id) => write!(f, "ModelWrapper::Mistral({})", id),
+            Self::Embedding(model) => write!(f, "ModelWrapper::Embedding({})", model.model_id()),
         }
     }
 }
 
 impl ModelWrapper {
-    pub fn model_id(&self) -> &str {
+    pub fn model_id(&self) -> String {
         match self {
-            ModelWrapper::Llama(_, id) => id,
-            ModelWrapper::Qwen(_, id) => id,
-            ModelWrapper::Mistral(_, id) => id,
+            ModelWrapper::Llama(_, id) => id.clone(),
+            ModelWrapper::Qwen(_, id) => id.clone(),
+            ModelWrapper::Mistral(_, id) => id.clone(),
+            ModelWrapper::Embedding(model) => model.model_id(),
+        }
+    }
+
+    pub fn embedding_size(&self) -> usize {
+        match self {
+            ModelWrapper::Llama(_, _) | ModelWrapper::Qwen(_, _) | ModelWrapper::Mistral(_, _) => 
+                panic!("Chat models do not support embeddings"),
+            ModelWrapper::Embedding(model) => model.embedding_size(),
         }
     }
 
     pub fn generate(&mut self, prompt: &str, max_tokens: usize, temperature: f32) -> Result<String> {
         match self {
-            ModelWrapper::Llama(model, _) => model.generate(prompt, max_tokens, temperature)
-                .context("Llama generation failed"),
-            ModelWrapper::Qwen(model, _) => model.generate(prompt, max_tokens, temperature)
-                .context("Qwen generation failed"),
-            ModelWrapper::Mistral(model, _) => model.generate(prompt, max_tokens, temperature)
-                .context("Mistral generation failed"),
+            ModelWrapper::Llama(model, _) => model.generate(prompt, max_tokens, temperature),
+            ModelWrapper::Qwen(model, _) => model.generate(prompt, max_tokens, temperature),
+            ModelWrapper::Mistral(model, _) => model.generate(prompt, max_tokens, temperature),
+            ModelWrapper::Embedding(_) => Err(anyhow::anyhow!("Embedding models do not support text generation")),
+        }
+    }
+
+    pub fn embed(&self, text: &str) -> Result<EmbeddingOutput> {
+        match self {
+            ModelWrapper::Llama(_, _) | ModelWrapper::Qwen(_, _) | ModelWrapper::Mistral(_, _) => 
+                Err(anyhow::anyhow!("Chat models do not support embeddings")),
+            ModelWrapper::Embedding(model) => model.embed(text),
         }
     }
 }
