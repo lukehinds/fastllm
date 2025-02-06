@@ -14,6 +14,7 @@ This is a work in progress and the API is not yet stable!
 ## ✨ Features
 
 - 🔄 OpenAI-compatible chat completion API endpoint
+- 🧮 Text embeddings API endpoint
 - 🤗 Support for loading models from HuggingFace Hub
 - 🍎 MPS Metal GPU acceleration (cuda, cpu coming next)
 
@@ -22,13 +23,14 @@ This is a work in progress and the API is not yet stable!
 - [x] TinyLlama/TinyLlama-1.1B-Chat-v1.0
 - [x] Mistral7 and derivatives
 - [x] Qwen2.5 and derivatives
+- [x] all-MiniLM-L6-v2 (embeddings)
 
 ## 📋 TODO
 
 - [ ] Add device autosensing so that we also support CPU, MPS, and CUDA devices.
 - [ ] Add support for more models (deepseek, etc.)
 - [ ] Add support for more data types (float16, float32, bfloat16, int8, uint8, etc.)
-- [ ] Add support for more features (embedding, completion, etc.)
+- [ ] Add support for more features (completion, etc.)
 - [ ] Provide benchmarks for different models and configurations
 - [ ] Add support for model listing at /v1/models
 
@@ -176,6 +178,31 @@ Create a chat completion. Compatible with OpenAI's chat completion API.
         "prompt_tokens": 57,
         "completion_tokens": 23,
         "total_tokens": 80
+    }
+}
+```
+
+### POST /v1/embeddings
+
+Create embeddings for the input text. Compatible with OpenAI's embeddings API.
+
+#### Request Format
+```json
+{
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "input": "The food was delicious and the waiter..."
+}
+```
+
+#### Response Format
+```json
+{
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "object": "embedding",
+    "embedding": [0.0023, -0.009, 0.015, ...],
+    "usage": {
+        "prompt_tokens": 57,
+        "total_tokens": 57
     }
 }
 ```

@@ -101,39 +101,48 @@ async fn main() -> Result<()> {
     
     tracing::info!("Loading model: {}", config.model.model_id);
     // Determine model type from model ID
-    let model = if config.model.model_id.contains("Qwen") {
-        models::ModelWrapper::Qwen(
-            load_model::<models::qwen::QwenWithConfig>(
-                &config.model.model_id,
-                &config.model.revision,
-                default_dtype,
-                &device,
-            ).await?,
-            config.model.model_id.clone()
-        )
-    } else if config.model.model_id.contains("Mistral") {
-        tracing::info!("Loading Mistral model");
-        models::ModelWrapper::Mistral(
-            load_model::<models::mistral::MistralWithConfig>(
-                &config.model.model_id,
-                &config.model.revision,
-                default_dtype,
-                &device,
-            ).await?,
-            config.model.model_id.clone()
-        )
-    } else {
-        // Default to Llama for other models
-        tracing::info!("Loading Llama model");
-        models::ModelWrapper::Llama(
-            load_model::<models::llama::LlamaWithConfig>(
-                &config.model.model_id,
-                &config.model.revision,
-                default_dtype,
-                &device,
-            ).await?,
-            config.model.model_id.clone()
-        )
+    let model = match config.model.model_id.as_str() {
+        id if id.contains("Qwen") => {
+            models::ModelWrapper::Qwen(
+                load_model::<models::qwen::QwenWithConfig>(
+                    &config.model.model_id,
+                    &config.model.revision,
+                    default_dtype,
+                    &device,
+                ).await?,
+                config.model.model_id.clone()
+            )
+        },
+        id if id.contains("Mistral") => {
+            tracing::info!("Loading Mistral model");
+            models::ModelWrapper::Mistral(
+                load_model::<models::mistral::MistralWithConfig>(
+                    &config.model.model_id,
+                    &config.model.revision,
+                    default_dtype,
+                    &device,
+                ).await?,
+                config.model.model_id.clone()
+            )
+        },
+        id if id.contains("all-MiniLM-L6-v2") => {
+            models::ModelWrapper::Embedding(
+                Box::new(models::embeddings::MiniLMModel::new(&config.model.model_id)?)
+            )
+        },
+        id if id.contains("Llama") => {
+            tracing::info!("Loading Llama model");
+            models::ModelWrapper::Llama(
+                load_model::<models::llama::LlamaWithConfig>(
+                    &config.model.model_id,
+                    &config.model.revision,
+                    default_dtype,
+                    &device,
+                ).await?,
+                config.model.model_id.clone()
+            )
+        },
+        _ => anyhow::bail!("Unsupported model: {}", config.model.model_id),
     };
     tracing::info!("Model loaded successfully");
 
