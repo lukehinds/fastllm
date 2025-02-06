@@ -38,14 +38,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      
-      - name: Install GCC 13
+
+      - name: Install GCC 11
         run: |
           sudo apt update
-          sudo apt install gcc-13 g++-13
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 13
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 13
-  
+          sudo apt install gcc-11 g++-11
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
 
       - name: Install CUDA (Only for CUDA Builds)
         if: matrix.features == 'cuda'
