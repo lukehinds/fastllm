@@ -29,7 +29,7 @@ use embeddings::{EmbeddingModel, EmbeddingOutput};
 
 #[cfg(test)]
 #[derive(Debug)]
-struct MockLlamaWithConfig {}
+pub(crate) struct MockLlamaWithConfig {}
 
 #[cfg(test)]
 impl ModelInitializer for MockLlamaWithConfig {
