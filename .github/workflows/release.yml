@@ -9,6 +9,9 @@ jobs:
   build:
     name: Build Release
     runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       matrix:
         include:
@@ -43,7 +46,24 @@ jobs:
         if: matrix.features == 'cuda'
         uses: Jimver/cuda-toolkit@v0.2.21
         with:
+          method: 'network'
+          use-github-cache: false
           cuda: '12.5.0'
+      
+      - name: If Linux, install GCC 12
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "SHELL=bash" >> $GITHUB_ENV
+          sudo apt update
+          sudo apt install gcc-12 g++-12
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 12
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 12
+          echo "SHELL=bash" >> $GITHUB_ENV
+
+      - name: Verify CUDA prerequisites
+        run: |
+          nvcc --version
+        shell: ${{ env.SHELL }}
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
