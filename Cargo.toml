@@ -3,10 +3,6 @@ name = "fastllm"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-metal = []
-accelerate = []
-
 [dependencies]
 axum = { version = "0.7.9", features = ["http1"] }
 tokio = { version = "1.35", features = ["full"] }
@@ -16,9 +12,9 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-http = { version = "0.5", features = ["trace"] }
-candle-core = { git = "https://github.com/huggingface/candle.git" }
-candle-nn = { git = "https://github.com/huggingface/candle.git" }
-candle-transformers = { git = "https://github.com/huggingface/candle.git" }
+candle-core = { git = "https://github.com/huggingface/candle.git"}
+candle-nn = { git = "https://github.com/huggingface/candle.git"}
+candle-transformers = { git = "https://github.com/huggingface/candle.git"}
 tokenizers = "0.21.0"
 hf-hub = { version = "0.3", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
