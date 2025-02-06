@@ -6,8 +6,16 @@ edition = "2021"
 [features]
 default = ["cpu"]  # Default to CPU build
 cpu = []  # CPU-only mode
-cuda = ["candle-core/cuda"]
-metal = ["candle-core/metal"]
+cuda = [
+    "candle-core/cuda",
+    "candle-nn/cuda",
+    "candle-transformers/cuda"
+]
+metal = [
+    "candle-core/metal",
+    "candle-nn/metal",
+    "candle-transformers/metal"
+]
 
 [dependencies]
 axum = { version = "0.7.9", features = ["http1"] }
@@ -33,13 +41,3 @@ reqwest = { version = "0.11", features = ["blocking", "json"] }
 candle-core = { git = "https://github.com/huggingface/candle.git", default-features = false }
 candle-nn = { git = "https://github.com/huggingface/candle.git", default-features = false }
 candle-transformers = { git = "https://github.com/huggingface/candle.git", default-features = false }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }

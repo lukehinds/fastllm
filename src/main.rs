@@ -24,47 +24,32 @@ struct Args {
     model: Option<String>,
 }
 
-#[cfg(not(feature = "cpu"))]
 fn get_device() -> candle_core::Device {
     #[cfg(target_os = "macos")]
-    let device = {
-        tracing::info!("MacOS detected - attempting to use Metal device");
-        match candle_core::Device::new_metal(0) {
-            Ok(metal_device) => {
+    {
+        #[cfg(feature = "metal")]
+        {
+            tracing::info!("MacOS detected - attempting to use Metal device");
+            if let Ok(device) = candle_core::Device::new_metal(0) {
                 tracing::info!("Successfully initialized Metal device");
-                metal_device
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize Metal device: {}. Falling back to CPU", e);
-                candle_core::Device::Cpu
+                return device;
             }
         }
-    };
+    }
 
     #[cfg(target_os = "linux")]
-    let device = {
-        tracing::info!("Linux detected - attempting to use CUDA device");
-        match candle_core::Device::cuda_if_available(0) {
-            Ok(cuda_device) => {
+    {
+        #[cfg(feature = "cuda")]
+        {
+            tracing::info!("Linux detected - attempting to use CUDA device");
+            if let Ok(device) = candle_core::Device::cuda_if_available(0) {
                 tracing::info!("Successfully initialized CUDA device");
-                cuda_device
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize CUDA device: {}. Falling back to CPU", e);
-                candle_core::Device::Cpu
+                return device;
             }
         }
-    };
+    }
 
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let device = candle_core::Device::Cpu;
-
-    device
-}
-
-#[cfg(feature = "cpu")]
-fn get_device() -> candle_core::Device {
-    tracing::info!("Running in CPU-only mode");
+    tracing::info!("Using CPU device");
     candle_core::Device::Cpu
 }
 
