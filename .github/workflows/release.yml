@@ -39,20 +39,20 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       
-      - name: Install GCC 11
+      - name: Install GCC 12
         run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt update
-          sudo apt install -y gcc-11 g++-11
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
-          gcc --version
+          sudo apt install gcc-13 g++-13
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 13
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 13
   
 
       - name: Install CUDA (Only for CUDA Builds)
         if: matrix.features == 'cuda'
-        uses: Jimver/cuda-toolkit@v0.2.11
+        uses: Jimver/cuda-toolkit@v0.2.21
         with:
-          cuda: '12.1.0'
+          cuda: '12.5.0'
           method: 'network'  # Avoids using pre-cached
 
       - name: Set up CUDA environment (Only for CUDA Builds)
