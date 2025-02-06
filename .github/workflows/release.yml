@@ -16,16 +16,20 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: fastllm-cpu-linux
-            cuda: false
+            features: ""
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact_name: fastllm-cpu-macos
-            cuda: false
-          # CUDA build (Linux only)
+            features: ""
+          # GPU builds
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: fastllm-cuda-linux
-            cuda: true
+            features: "cuda"
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: fastllm-metal-macos
+            features: "metal"
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +40,7 @@ jobs:
           targets: ${{ matrix.target }}
       
       - name: Install CUDA
-        if: matrix.cuda
+        if: matrix.features == 'cuda'
         uses: Jimver/cuda-toolkit@v0.2.11
         with:
           cuda: '12.1.0'
@@ -44,12 +48,15 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
       
-      - name: Set CPU-only flag
-        if: "!matrix.cuda"
-        run: echo "RUSTFLAGS=--cfg cpu_only" >> $GITHUB_ENV
-      
       - name: Build Release
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          if [ "${{ matrix.features }}" = "cuda" ]; then
+            cargo build --release --target ${{ matrix.target }} --no-default-features --features cuda
+          elif [ "${{ matrix.features }}" = "metal" ]; then
+            cargo build --release --target ${{ matrix.target }} --no-default-features --features metal
+          else
+            cargo build --release --target ${{ matrix.target }} --features cpu
+          fi
       
       - name: Prepare artifact
         run: |

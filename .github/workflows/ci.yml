@@ -8,7 +8,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "--cfg cpu_only"  # Default to CPU-only builds
 
 jobs:
   test:
@@ -47,13 +46,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --verbose --features cpu
 
   build-cuda:
     name: Build (CUDA)
     runs-on: ubuntu-latest
-    env:
-      RUSTFLAGS: ""  # Clear CPU-only flag
     steps:
       - uses: actions/checkout@v4
       
@@ -69,4 +66,4 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Build
-        run: cargo build --verbose 
+        run: cargo build --verbose --no-default-features --features cuda 

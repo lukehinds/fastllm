@@ -24,9 +24,8 @@ struct Args {
     model: Option<String>,
 }
 
-#[cfg(not(cpu_only))]
+#[cfg(not(feature = "cpu"))]
 fn get_device() -> candle_core::Device {
-    // Your existing device selection code
     #[cfg(target_os = "macos")]
     let device = {
         tracing::info!("MacOS detected - attempting to use Metal device");
@@ -63,7 +62,7 @@ fn get_device() -> candle_core::Device {
     device
 }
 
-#[cfg(cpu_only)]
+#[cfg(feature = "cpu")]
 fn get_device() -> candle_core::Device {
     tracing::info!("Running in CPU-only mode");
     candle_core::Device::Cpu
