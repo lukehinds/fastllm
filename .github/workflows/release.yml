@@ -39,9 +39,8 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       
-      - name: Install GCC 12
+      - name: Install GCC 13
         run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt update
           sudo apt install gcc-13 g++-13
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 13
@@ -55,19 +54,10 @@ jobs:
           cuda: '12.5.0'
           method: 'network'  # Avoids using pre-cached
 
-      - name: Set up CUDA environment (Only for CUDA Builds)
-        if: matrix.features == 'cuda'
-        run: |
-          echo "Adding CUDA to PATH..."
-          echo "/usr/local/cuda/bin" >> $GITHUB_PATH
-          echo "CUDA_HOME=/usr/local/cuda" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda" >> $GITHUB_ENV
-
       - name: Validate CUDA Installation
         if: matrix.features == 'cuda'
         run: |
-          nvcc --version || (echo "CUDA installation failed" && exit 1)
+          nvcc -V || (echo "CUDA installation failed" && exit 1)
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
