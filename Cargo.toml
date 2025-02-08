@@ -1,7 +1,11 @@
 [package]
 name = "fastllm"
 version = "0.1.0"
+authors = ["Luke Hinds <luke@stacklok.com>"]   
 edition = "2021"
+description = "A fast and efficient LLM inference library"
+license = "MIT"
+repository = "https://github.com/stacklok/fastllm"
 
 [dependencies]
 axum = { version = "0.7.9", features = ["http1"] }
@@ -12,9 +16,9 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-http = { version = "0.5", features = ["trace"] }
-candle-core = { git = "https://github.com/huggingface/candle.git"}
-candle-nn = { git = "https://github.com/huggingface/candle.git"}
-candle-transformers = { git = "https://github.com/huggingface/candle.git"}
+candle-core = { version = "0.8.2" }
+candle-nn = { version = "0.8.2" }
+candle-transformers = { version = "0.8.2" }
 tokenizers = "0.21.0"
 hf-hub = { version = "0.3", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
@@ -28,13 +32,16 @@ reqwest = { version = "0.11", features = ["blocking", "json"] }
 tokio-stream = "0.1"
 bytes = "1.5"
 
-[target.'cfg(target_os = "macos")'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-
+[features]
+default = ["cpu"]  # Make CPU the default feature
+cpu = []          # CPU-only mode
+cuda = [
+    "candle-core/cuda",
+    "candle-nn/cuda",
+    "candle-transformers/cuda"
+]
+metal = [
+    "candle-core/metal",
+    "candle-nn/metal",
+    "candle-transformers/metal"
+]

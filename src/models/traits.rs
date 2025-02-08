@@ -1,6 +1,6 @@
+use crate::models::cache::ModelCache;
 use anyhow::Result;
 use candle_core::Tensor;
-use crate::models::cache::ModelCache;
 
 pub trait ModelForward {
     fn forward_pass(&self, input: &Tensor, cache: &mut dyn ModelCache) -> Result<Tensor>;
@@ -52,9 +52,12 @@ mod tests {
         let model = MockModel {
             cache_cleared: std::cell::Cell::new(false),
         };
-        
+
         model.clear_cache();
-        assert!(model.cache_cleared.get(), "Cache should be marked as cleared");
+        assert!(
+            model.cache_cleared.get(),
+            "Cache should be marked as cleared"
+        );
     }
 
     #[test]
@@ -67,4 +70,4 @@ mod tests {
         assert!(!model.is_eos_token(1), "Token 1 should not be EOS token");
         assert_eq!(model.get_eos_token_id(), Some(2));
     }
-} 
+}

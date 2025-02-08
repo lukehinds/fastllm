@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build Release
+    runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write
+      contents: write
+    strategy:
+      matrix:
+        include:
+          # CPU builds
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: fastllm-cpu-linux
+            features: "cpu"
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: fastllm-cpu-macos
+            features: "cpu"
+          # GPU builds
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: fastllm-metal-macos
+            features: "metal"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Release (Correct Feature Flags)
+        run: cargo build -vv --release --target ${{ matrix.target }} --no-default-features --features ${{ matrix.features }}
+
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+
+      - name: Copy binary to artifacts
+        run: |
+          if [ -f "target/${{ matrix.target }}/release/fastllm" ]; then
+            cp "target/${{ matrix.target }}/release/fastllm" "artifacts/${{ matrix.artifact_name }}"
+          else
+            echo "Binary not found!"
+            exit 1
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        if: success()
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: artifacts/${{ matrix.artifact_name }}
+          if-no-files-found: error
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,16 +1,15 @@
 use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
+use candle_nn::Activation;
 use candle_nn::VarBuilder;
 use candle_transformers::models::mistral::{Config as MistralConfig, Model as Mistral};
-use candle_nn::Activation;
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::cell::RefCell;
 use std::any::Any;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
-use super::model_initializer::ModelInitializer;
 use super::cache::ModelCache;
-
+use super::model_initializer::ModelInitializer;
 
 // Wrapper type for cache management
 #[derive(Debug)]
@@ -32,12 +31,12 @@ impl ModelCache for MistralCache {
         self.seqlen_offset += 1;
         tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
     }
-    
+
     fn reset(&mut self) {
         self.seqlen_offset = 0;
         tracing::debug!("Cache reset");
     }
-    
+
     fn get_offset(&self) -> usize {
         self.seqlen_offset
     }
@@ -133,7 +132,7 @@ impl From<ConfigFile> for MistralConfig {
             vocab_size: cf.vocab_size,
             num_hidden_layers: cf.num_hidden_layers,
             num_attention_heads: cf.num_attention_heads,
-            num_key_value_heads: num_key_value_heads,
+            num_key_value_heads,
             rms_norm_eps: cf.rms_norm_eps,
             rope_theta: cf.rope_theta.unwrap_or(10000.0),
             max_position_embeddings: cf.max_position_embeddings.unwrap_or(32768),
@@ -165,7 +164,10 @@ impl ModelInitializer for MistralWithConfig {
         device: &Device,
     ) -> Result<(Self, Self::Cache)> {
         let mistral_config = MistralConfig::from(config.clone());
-        let head_dim = Self::get_head_dim(mistral_config.hidden_size, mistral_config.num_attention_heads);
+        let head_dim = Self::get_head_dim(
+            mistral_config.hidden_size,
+            mistral_config.num_attention_heads,
+        );
 
         tracing::debug!(
             "Model dimensions: hidden_size={}, head_dim={}, num_heads={}, num_kv_heads={}, max_pos={}",
@@ -189,19 +191,19 @@ impl ModelInitializer for MistralWithConfig {
         tracing::info!("Initializing model with dtype={:?}", dtype);
         let model = Mistral::new(&mistral_config, vb)?;
 
-        Ok((Self { model: RefCell::new(model) }, MistralCache::new()))
+        Ok((
+            Self {
+                model: RefCell::new(model),
+            },
+            MistralCache::new(),
+        ))
     }
 
     fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
         Ok(MistralCache::new())
     }
 
-    fn forward(
-        &self,
-        input: &Tensor,
-        _pos: usize,
-        cache: &mut Self::Cache,
-    ) -> Result<Tensor> {
+    fn forward(&self, input: &Tensor, _pos: usize, cache: &mut Self::Cache) -> Result<Tensor> {
         let (batch_size, seq_len) = input.dims2()?;
         tracing::debug!(
             "Forward pass: batch_size={}, seq_len={}, seqlen_offset={}, input_shape={:?}, input_dtype={:?}",
@@ -218,7 +220,10 @@ impl ModelInitializer for MistralWithConfig {
             self.model.borrow_mut().clear_kv_cache();
         }
 
-        let output = self.model.borrow_mut().forward(input, cache.seqlen_offset)?;
+        let output = self
+            .model
+            .borrow_mut()
+            .forward(input, cache.seqlen_offset)?;
         tracing::debug!(
             "Forward pass complete: output_shape={:?}, output_dtype={:?}, seqlen_offset={}",
             output.shape(),
@@ -245,7 +250,11 @@ mod tests {
         assert_eq!(cache.get_offset(), 1, "Offset should be 1 after increment");
 
         cache.increment_offset();
-        assert_eq!(cache.get_offset(), 2, "Offset should be 2 after second increment");
+        assert_eq!(
+            cache.get_offset(),
+            2,
+            "Offset should be 2 after second increment"
+        );
 
         cache.reset();
         assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
@@ -284,8 +293,14 @@ mod tests {
     fn test_mistral_cache_as_any() {
         let mut cache = MistralCache::new();
         let any_cache = cache.as_any_mut();
-        assert!(any_cache.downcast_mut::<MistralCache>().is_some(), "Should be able to downcast to MistralCache");
-        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+        assert!(
+            any_cache.downcast_mut::<MistralCache>().is_some(),
+            "Should be able to downcast to MistralCache"
+        );
+        assert!(
+            any_cache.downcast_mut::<String>().is_none(),
+            "Should not be able to downcast to wrong type"
+        );
     }
 
     #[test]
@@ -323,7 +338,10 @@ mod tests {
         let hidden_size = 512;
         let num_attention_heads = 8;
         let head_dim = MistralWithConfig::get_head_dim(hidden_size, num_attention_heads);
-        assert_eq!(head_dim, 64, "Head dimension should be hidden_size / num_attention_heads");
+        assert_eq!(
+            head_dim, 64,
+            "Head dimension should be hidden_size / num_attention_heads"
+        );
     }
 
     #[test]

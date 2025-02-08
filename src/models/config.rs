@@ -1,6 +1,6 @@
 use anyhow::Result;
-use serde::Deserialize;
 use candle_nn::Activation;
+use serde::Deserialize;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct BaseModelConfig {
@@ -20,7 +20,10 @@ pub struct BaseModelConfig {
 pub trait ModelConfigValidation {
     fn validate_head_dimensions(&self) -> Result<usize>;
     fn validate_gqa_config(&self) -> Result<()>;
-    fn get_activation() -> Activation where Self: Sized {
+    fn get_activation() -> Activation
+    where
+        Self: Sized,
+    {
         Activation::Silu
     }
 }
@@ -38,7 +41,7 @@ impl ModelConfigValidation for BaseModelConfig {
         );
         Ok(head_dim)
     }
-    
+
     fn validate_gqa_config(&self) -> Result<()> {
         if let Some(num_kv_heads) = self.num_key_value_heads {
             anyhow::ensure!(
@@ -90,8 +93,10 @@ mod tests {
             torch_dtype: None,
         };
 
-        assert!(config.validate_head_dimensions().is_err(), 
-            "Should error when hidden_size not divisible by num_attention_heads");
+        assert!(
+            config.validate_head_dimensions().is_err(),
+            "Should error when hidden_size not divisible by num_attention_heads"
+        );
     }
 
     #[test]
@@ -110,8 +115,10 @@ mod tests {
             torch_dtype: None,
         };
 
-        assert!(config.validate_gqa_config().is_ok(), 
-            "Valid GQA config should pass validation");
+        assert!(
+            config.validate_gqa_config().is_ok(),
+            "Valid GQA config should pass validation"
+        );
     }
 
     #[test]
@@ -130,7 +137,9 @@ mod tests {
             torch_dtype: None,
         };
 
-        assert!(config.validate_gqa_config().is_err(),
-            "Should error when num_attention_heads not divisible by num_key_value_heads");
+        assert!(
+            config.validate_gqa_config().is_err(),
+            "Should error when num_attention_heads not divisible by num_key_value_heads"
+        );
     }
-} 
+}

@@ -1,13 +1,13 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
-use candle_transformers::models::qwen2::{Config as QwenConfig, ModelForCausalLM as Qwen};
 use candle_transformers::generation::LogitsProcessor;
-use std::cell::RefCell;
+use candle_transformers::models::qwen2::{Config as QwenConfig, ModelForCausalLM as Qwen};
 use std::any::Any;
+use std::cell::RefCell;
 
 use super::model_initializer::ModelInitializer;
-use super::{ModelCache, BaseModelConfig, ModelConfigValidation, ModelForward, ModelGeneration};
+use super::{BaseModelConfig, ModelCache, ModelConfigValidation, ModelForward, ModelGeneration};
 
 #[derive(Debug)]
 pub struct QwenWithConfig {
@@ -29,9 +29,10 @@ unsafe impl Sync for QwenWithConfig {}
 
 impl From<BaseModelConfig> for QwenConfig {
     fn from(base: BaseModelConfig) -> Self {
-        let _ = base.validate_head_dimensions()
+        let _ = base
+            .validate_head_dimensions()
             .expect("Invalid head dimensions");
-        
+
         base.validate_gqa_config()
             .expect("Invalid GQA configuration");
 
@@ -41,12 +42,10 @@ impl From<BaseModelConfig> for QwenConfig {
             vocab_size: base.vocab_size,
             num_hidden_layers: base.num_hidden_layers,
             num_attention_heads: base.num_attention_heads,
-            num_key_value_heads: base.num_key_value_heads
-                .unwrap_or(base.num_attention_heads),
+            num_key_value_heads: base.num_key_value_heads.unwrap_or(base.num_attention_heads),
             rms_norm_eps: base.rms_norm_eps,
             rope_theta: base.rope_theta.unwrap_or(10000.0),
-            max_position_embeddings: base.max_position_embeddings
-                .unwrap_or(32768),
+            max_position_embeddings: base.max_position_embeddings.unwrap_or(32768),
             sliding_window: base.sliding_window.unwrap_or(4096),
             max_window_layers: 1,
             tie_word_embeddings: false,
@@ -72,12 +71,12 @@ impl ModelCache for QwenCache {
         self.seqlen_offset += 1;
         tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
     }
-    
+
     fn reset(&mut self) {
         self.seqlen_offset = 0;
         tracing::debug!("Cache reset");
     }
-    
+
     fn get_offset(&self) -> usize {
         self.seqlen_offset
     }
@@ -98,9 +97,9 @@ impl ModelInitializer for QwenWithConfig {
         device: &Device,
     ) -> Result<(Self, Self::Cache)> {
         let qwen_config = QwenConfig::from(config.clone());
-        
+
         tracing::debug!(
-            "Model config: hidden_size={}, layers={}, heads={}", 
+            "Model config: hidden_size={}, layers={}, heads={}",
             qwen_config.hidden_size,
             qwen_config.num_hidden_layers,
             qwen_config.num_attention_heads,
@@ -109,21 +108,19 @@ impl ModelInitializer for QwenWithConfig {
         let vb = VarBuilder::from_tensors(tensors, dtype, device);
         let model = Qwen::new(&qwen_config, vb)?;
 
-        Ok((Self { 
-            model: RefCell::new(model),
-        }, QwenCache::new()))
+        Ok((
+            Self {
+                model: RefCell::new(model),
+            },
+            QwenCache::new(),
+        ))
     }
 
     fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
         Ok(QwenCache::new())
     }
 
-    fn forward(
-        &self,
-        input: &Tensor,
-        _pos: usize,
-        cache: &mut Self::Cache,
-    ) -> Result<Tensor> {
+    fn forward(&self, input: &Tensor, _pos: usize, cache: &mut Self::Cache) -> Result<Tensor> {
         self.forward_pass(input, cache)
     }
 }
@@ -156,8 +153,10 @@ impl ModelForward for QwenWithConfig {
 #[allow(unused)]
 impl ModelGeneration for QwenWithConfig {
     fn sample_next_token(&self, logits: &Tensor, temperature: f32) -> Result<usize> {
-        let mut logits_processor = LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
-        logits_processor.sample(logits)
+        let mut logits_processor =
+            LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
+        logits_processor
+            .sample(logits)
             .map(|x| x as usize)
             .context("Failed to sample next token")
     }
@@ -185,7 +184,11 @@ mod tests {
         assert_eq!(cache.get_offset(), 1, "Offset should be 1 after increment");
 
         cache.increment_offset();
-        assert_eq!(cache.get_offset(), 2, "Offset should be 2 after second increment");
+        assert_eq!(
+            cache.get_offset(),
+            2,
+            "Offset should be 2 after second increment"
+        );
 
         cache.reset();
         assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
@@ -224,8 +227,14 @@ mod tests {
     fn test_qwen_cache_as_any() {
         let mut cache = QwenCache::new();
         let any_cache = cache.as_any_mut();
-        assert!(any_cache.downcast_mut::<QwenCache>().is_some(), "Should be able to downcast to QwenCache");
-        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+        assert!(
+            any_cache.downcast_mut::<QwenCache>().is_some(),
+            "Should be able to downcast to QwenCache"
+        );
+        assert!(
+            any_cache.downcast_mut::<String>().is_none(),
+            "Should not be able to downcast to wrong type"
+        );
     }
 
     #[test]
