@@ -1,15 +1,17 @@
 use anyhow::{Context, Result};
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
-use candle_transformers::models::llama::{Config as LlamaConfig, Cache, LlamaEosToks, Llama as CandelLlama};
+use candle_transformers::models::llama::{
+    Cache, Config as LlamaConfig, Llama as CandelLlama, LlamaEosToks,
+};
 use std::any::Any;
 
 pub type Llama = CandelLlama;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use super::model_initializer::ModelInitializer;
 use super::cache::ModelCache;
+use super::model_initializer::ModelInitializer;
 
 // Define a custom config that we can deserialize from JSON
 #[derive(Deserialize, Clone)]
@@ -38,7 +40,7 @@ impl From<ConfigFile> for LlamaConfig {
             rms_norm_eps: cf.rms_norm_eps,
             rope_theta: cf.rope_theta.unwrap_or(10000.0),
             use_flash_attn: false,
-            eos_token_id: Some(LlamaEosToks::Single(2)),  // Common EOS token ID for LLaMA models
+            eos_token_id: Some(LlamaEosToks::Single(2)), // Common EOS token ID for LLaMA models
             bos_token_id: Some(1),
             rope_scaling: None,
             tie_word_embeddings: false,
@@ -75,11 +77,11 @@ impl ModelCache for LlamaCache {
     fn increment_offset(&mut self) {
         self.seqlen_offset += 1;
     }
-    
+
     fn reset(&mut self) {
         self.seqlen_offset = 0;
     }
-    
+
     fn get_offset(&self) -> usize {
         self.seqlen_offset
     }
@@ -101,20 +103,21 @@ impl ModelInitializer for LlamaWithConfig {
     ) -> Result<(Self, Self::Cache)> {
         let llama_config = LlamaConfig::from(config.clone());
         tracing::debug!(
-            "Model config: hidden_size={}, layers={}, heads={}", 
-            llama_config.hidden_size, llama_config.num_hidden_layers, llama_config.num_attention_heads
+            "Model config: hidden_size={}, layers={}, heads={}",
+            llama_config.hidden_size,
+            llama_config.num_hidden_layers,
+            llama_config.num_attention_heads
         );
 
         let vb = VarBuilder::from_tensors(tensors, dtype, device);
-        
+
         tracing::info!("Initializing model cache");
         let inner_cache = Cache::new(true, dtype, &llama_config, device)
             .context("Failed to initialize model cache")?;
         let cache = LlamaCache::new(inner_cache);
-        
+
         tracing::info!("Initializing model");
-        let model = Llama::load(vb, &llama_config)
-            .context("Failed to initialize model")?;
+        let model = Llama::load(vb, &llama_config).context("Failed to initialize model")?;
 
         Ok((Self { model }, cache))
     }
@@ -141,12 +144,7 @@ impl ModelInitializer for LlamaWithConfig {
         Ok(LlamaCache::new(inner_cache))
     }
 
-    fn forward(
-        &self,
-        input: &Tensor,
-        pos: usize,
-        cache: &mut Self::Cache,
-    ) -> Result<Tensor> {
+    fn forward(&self, input: &Tensor, pos: usize, cache: &mut Self::Cache) -> Result<Tensor> {
         Ok(self.model.forward(input, pos, &mut cache.inner)?)
     }
 }
@@ -186,7 +184,11 @@ mod tests {
         assert_eq!(cache.get_offset(), 1, "Offset should be 1 after increment");
 
         cache.increment_offset();
-        assert_eq!(cache.get_offset(), 2, "Offset should be 2 after second increment");
+        assert_eq!(
+            cache.get_offset(),
+            2,
+            "Offset should be 2 after second increment"
+        );
 
         cache.reset();
         assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
@@ -244,7 +246,13 @@ mod tests {
         let mut cache = LlamaCache::new(inner_cache);
 
         let any_cache = cache.as_any_mut();
-        assert!(any_cache.downcast_mut::<LlamaCache>().is_some(), "Should be able to downcast to LlamaCache");
-        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+        assert!(
+            any_cache.downcast_mut::<LlamaCache>().is_some(),
+            "Should be able to downcast to LlamaCache"
+        );
+        assert!(
+            any_cache.downcast_mut::<String>().is_none(),
+            "Should not be able to downcast to wrong type"
+        );
     }
 }

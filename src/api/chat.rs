@@ -1,13 +1,16 @@
 use axum::{
     extract::{Json, State},
     http::StatusCode,
-    response::{sse::{Event, Sse}, IntoResponse, Response},
+    response::{
+        sse::{Event, Sse},
+        IntoResponse, Response,
+    },
 };
+use futures::stream::{self, StreamExt};
 use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use futures::stream::{self, StreamExt};
-use std::convert::Infallible;
 
 use crate::models::ModelWrapper;
 
@@ -97,17 +100,20 @@ pub async fn create_chat_completion(
         return Err((
             StatusCode::BAD_REQUEST,
             Json(super::ErrorResponse::new(
-                format!("Requested model '{}' does not match loaded model '{}'", request.model, loaded_model_id),
+                format!(
+                    "Requested model '{}' does not match loaded model '{}'",
+                    request.model, loaded_model_id
+                ),
                 "model_mismatch",
             )),
         ));
     }
-    drop(model_lock);  // Release the lock before generation
+    drop(model_lock); // Release the lock before generation
 
     // Format the conversation history into a prompt
     let prompt = format_messages(&request.messages);
     tracing::debug!("Formatted prompt: {}", prompt);
-    
+
     if request.stream {
         let stream_id = format!("chatcmpl-{}", uuid::Uuid::new_v4());
         let created = chrono::Utc::now().timestamp();
@@ -130,7 +136,8 @@ pub async fn create_chat_completion(
         };
 
         let mut model = model.lock().await;
-        let token_stream = model.generate_stream(&prompt, request.max_tokens, request.temperature)
+        let token_stream = model
+            .generate_stream(&prompt, request.max_tokens, request.temperature)
             .map_err(|e| {
                 tracing::error!("Stream generation error: {}", e);
                 (
@@ -144,55 +151,60 @@ pub async fn create_chat_completion(
 
         let stream_id_final = stream_id.clone();
         let model_id_final = model_id.clone();
-        
-        let stream = stream::once(futures::future::ok::<_, Infallible>(Event::default().data(serde_json::to_string(&initial_response).unwrap())))
-            .chain(token_stream.map(move |token_result| {
-                let token = token_result.unwrap_or_else(|e| {
-                    tracing::error!("Token generation error: {}", e);
-                    String::new()
-                });
 
-                let stream_response = ChatCompletionStreamResponse {
-                    id: stream_id.clone(),
-                    object: "chat.completion.chunk".to_string(),
-                    created,
-                    model: model_id.clone(),
-                    choices: vec![ChatCompletionStreamChoice {
-                        index: 0,
-                        delta: ChatCompletionStreamDelta {
-                            role: None,
-                            content: Some(token),
-                        },
-                        finish_reason: None,
-                    }],
-                };
+        let stream = stream::once(futures::future::ok::<_, Infallible>(
+            Event::default().data(serde_json::to_string(&initial_response).unwrap()),
+        ))
+        .chain(token_stream.map(move |token_result| {
+            let token = token_result.unwrap_or_else(|e| {
+                tracing::error!("Token generation error: {}", e);
+                String::new()
+            });
 
-                Ok::<_, Infallible>(Event::default().data(serde_json::to_string(&stream_response).unwrap()))
-            }))
-            .chain(stream::once(futures::future::ok::<_, Infallible>({
-                let final_response = ChatCompletionStreamResponse {
-                    id: stream_id_final,
-                    object: "chat.completion.chunk".to_string(),
-                    created,
-                    model: model_id_final,
-                    choices: vec![ChatCompletionStreamChoice {
-                        index: 0,
-                        delta: ChatCompletionStreamDelta {
-                            role: None,
-                            content: None,
-                        },
-                        finish_reason: Some("stop".to_string()),
-                    }],
-                };
+            let stream_response = ChatCompletionStreamResponse {
+                id: stream_id.clone(),
+                object: "chat.completion.chunk".to_string(),
+                created,
+                model: model_id.clone(),
+                choices: vec![ChatCompletionStreamChoice {
+                    index: 0,
+                    delta: ChatCompletionStreamDelta {
+                        role: None,
+                        content: Some(token),
+                    },
+                    finish_reason: None,
+                }],
+            };
 
-                Event::default().data(serde_json::to_string(&final_response).unwrap())
-            })));
+            Ok::<_, Infallible>(
+                Event::default().data(serde_json::to_string(&stream_response).unwrap()),
+            )
+        }))
+        .chain(stream::once(futures::future::ok::<_, Infallible>({
+            let final_response = ChatCompletionStreamResponse {
+                id: stream_id_final,
+                object: "chat.completion.chunk".to_string(),
+                created,
+                model: model_id_final,
+                choices: vec![ChatCompletionStreamChoice {
+                    index: 0,
+                    delta: ChatCompletionStreamDelta {
+                        role: None,
+                        content: None,
+                    },
+                    finish_reason: Some("stop".to_string()),
+                }],
+            };
+
+            Event::default().data(serde_json::to_string(&final_response).unwrap())
+        })));
 
         Ok(Sse::new(stream).into_response())
     } else {
         // Generate the response
         let mut model = model.lock().await;
-        let output = model.generate(&prompt, request.max_tokens, request.temperature)
+        let output = model
+            .generate(&prompt, request.max_tokens, request.temperature)
             .map_err(|e| {
                 tracing::error!("Generation error: {}", e);
                 (
@@ -233,12 +245,10 @@ pub async fn create_chat_completion(
     }
 }
 
-pub async fn list_models(
-    State(model): State<Arc<Mutex<ModelWrapper>>>,
-) -> Json<serde_json::Value> {
+pub async fn list_models(State(model): State<Arc<Mutex<ModelWrapper>>>) -> Json<serde_json::Value> {
     let model = model.lock().await;
     let model_id = model.model_id();
-    
+
     Json(serde_json::json!({
         "object": "list",
         "data": [
@@ -254,33 +264,33 @@ pub async fn list_models(
 
 fn format_messages(messages: &[ChatMessage]) -> String {
     let mut formatted = String::new();
-    
+
     for msg in messages {
         match msg.role.as_str() {
             "system" => {
                 formatted.push_str("<|system|>\n");
                 formatted.push_str(&msg.content);
                 formatted.push_str("\n</s>\n");
-            },
+            }
             "user" => {
                 formatted.push_str("<|user|>\n");
                 formatted.push_str(&msg.content);
                 formatted.push_str("\n</s>\n");
-            },
+            }
             "assistant" => {
                 formatted.push_str("<|assistant|>\n");
                 formatted.push_str(&msg.content);
                 formatted.push_str("\n</s>\n");
-            },
+            }
             _ => {
                 tracing::warn!("Unknown role: {}", msg.role);
                 formatted.push_str(&format!("{}: {}\n", msg.role, msg.content));
             }
         }
     }
-    
+
     // Add the final assistant prompt
     formatted.push_str("<|assistant|>\n");
-    
+
     formatted
 }
