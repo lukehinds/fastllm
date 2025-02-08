@@ -50,6 +50,19 @@ jobs:
           method: 'network'
           sub-packages: '["nvcc", "cudart", "cublas", "cublas-dev"]'
 
+      - name: Print CUDA installer log
+        if: matrix.features == 'cuda'
+        run: |
+          echo "=== CUDA Installer Log ==="
+          if [ -f "/var/log/cuda-installer.log" ]; then
+            sudo cat /var/log/cuda-installer.log
+          else
+            echo "CUDA installer log not found at /var/log/cuda-installer.log"
+            echo "Searching for cuda-installer.log in other locations..."
+            sudo find / -name "cuda-installer.log" 2>/dev/null || echo "No cuda-installer.log found"
+          fi
+          echo "=== End CUDA Installer Log ==="
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
