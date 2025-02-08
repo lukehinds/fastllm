@@ -1,6 +1,6 @@
 # 🚀 FastLLM
 
-> A blazing-fast Rust inference server providing OpenAI-compatible APIs for local LLM deployment. Run powerful language models directly from HuggingFace with native Metal and CUDA acceleration.
+> A Rust inference server providing OpenAI-compatible APIs for local LLM deployment. Run language models directly from HuggingFace with native MacOS Metal, CUDA and CPU support.
 
 <div align="center">
 
