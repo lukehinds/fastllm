@@ -10,6 +10,10 @@
 
 </div>
 
+## 🧪 Experimental
+
+This is a work in progress and the API is not yet stable!
+
 ## 🌟 Key Features
 
 - 🚄 **High Performance** - Native acceleration on Metal (Apple Silicon) and CUDA
