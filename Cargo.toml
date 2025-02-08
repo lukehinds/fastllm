@@ -37,3 +37,4 @@ candle-transformers = { git = "https://github.com/huggingface/candle.git", featu
 candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
 candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
 candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+

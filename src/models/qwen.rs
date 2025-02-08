@@ -4,11 +4,10 @@ use candle_nn::VarBuilder;
 use candle_transformers::models::qwen2::{Config as QwenConfig, ModelForCausalLM as Qwen};
 use candle_transformers::generation::LogitsProcessor;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::any::Any;
 
 use super::model_initializer::ModelInitializer;
-use super::{ModelCache, CommonCache, BaseModelConfig, ModelConfigValidation, ModelForward, ModelGeneration};
+use super::{ModelCache, BaseModelConfig, ModelConfigValidation, ModelForward, ModelGeneration};
 
 #[derive(Debug)]
 pub struct QwenWithConfig {
@@ -63,7 +62,7 @@ pub struct QwenCache {
 }
 
 impl QwenCache {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { seqlen_offset: 0 }
     }
 }
@@ -94,7 +93,7 @@ impl ModelInitializer for QwenWithConfig {
 
     fn initialize_model(
         config: &Self::Config,
-        tensors: HashMap<String, Tensor>,
+        tensors: std::collections::HashMap<String, Tensor>,
         dtype: DType,
         device: &Device,
     ) -> Result<(Self, Self::Cache)> {

@@ -22,7 +22,7 @@ pub struct MistralCache {
 unsafe impl Send for MistralCache {}
 
 impl MistralCache {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { seqlen_offset: 0 }
     }
 }

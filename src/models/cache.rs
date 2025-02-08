@@ -15,6 +15,7 @@ pub struct CommonCache {
 }
 
 impl CommonCache {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self { seqlen_offset: 0 }
     }

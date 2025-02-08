@@ -2,8 +2,8 @@ use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
-use std::collections::HashMap;
-use futures::stream::{Stream, StreamExt};
+
+use futures::stream::Stream;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio::sync::mpsc;
 use std::sync::Arc;
@@ -27,7 +27,7 @@ mod cache;
 mod config;
 mod traits;
 
-pub use cache::{ModelCache, CommonCache};
+pub use cache::ModelCache;
 pub use config::{BaseModelConfig, ModelConfigValidation};
 pub use traits::{ModelForward, ModelGeneration};
 use embeddings::{EmbeddingModel, EmbeddingOutput};
@@ -39,19 +39,18 @@ pub(crate) struct MockLlamaWithConfig {}
 #[cfg(test)]
 impl ModelInitializer for MockLlamaWithConfig {
     type Config = BaseModelConfig;
-    type Cache = CommonCache;
-
+    type Cache = cache::CommonCache;
     fn initialize_model(
         _config: &Self::Config,
-        _tensors: HashMap<String, Tensor>,
+        _tensors: std::collections::HashMap<String, Tensor>,
         _dtype: DType,
         _device: &Device,
     ) -> Result<(Self, Self::Cache)> {
-        Ok((Self {}, CommonCache::new()))
+        Ok((Self {}, cache::CommonCache::new()))
     }
 
     fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
-        Ok(CommonCache::new())
+        Ok(cache::CommonCache::new())
     }
 
     fn forward(
@@ -222,7 +221,7 @@ impl ModelWrapper {
 }
 
 pub trait ThreadSafeModel: Send + Sync {
-    fn forward(&self, input: &Tensor, pos: usize, cache: &mut dyn ModelCache) -> Result<Tensor>;
+    fn forward(&self, input: &Tensor, pos: usize, cache: &mut dyn cache::ModelCache) -> Result<Tensor>;
 }
 
 impl<T> ThreadSafeModel for RwLock<T> 
@@ -230,7 +229,7 @@ where
     T: ModelInitializer + Send + Sync,
     T::Cache: 'static,
 {
-    fn forward(&self, input: &Tensor, pos: usize, cache: &mut dyn ModelCache) -> Result<Tensor> {
+    fn forward(&self, input: &Tensor, pos: usize, cache: &mut dyn cache::ModelCache) -> Result<Tensor> {
         let cache = cache.as_any_mut()
             .downcast_mut::<<T as ModelInitializer>::Cache>()
             .ok_or_else(|| anyhow::anyhow!("Failed to downcast cache"))?;
@@ -242,7 +241,7 @@ async fn generate_tokens_inner<M: ThreadSafeModel>(
     prompt: &str,
     max_tokens: usize,
     model: Arc<M>,
-    cache: &mut dyn ModelCache,
+    cache: &mut dyn cache::ModelCache,
     mut logits_processor: LogitsProcessor,
     tokenizer: &Tokenizer,
     device: &Device,
@@ -451,7 +450,7 @@ mod tests {
                 create_test_tokenizer(),
                 MockLlamaWithConfig {},
                 Device::Cpu,
-                CommonCache::new(),
+                cache::CommonCache::new(),
             ),
             model_id.to_string()
         );
@@ -467,7 +466,7 @@ mod tests {
                 create_test_tokenizer(),
                 MockLlamaWithConfig {},
                 Device::Cpu,
-                CommonCache::new(),
+                cache::CommonCache::new(),
             ),
             model_id.to_string()
         );

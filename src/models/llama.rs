@@ -63,7 +63,7 @@ pub struct LlamaCache {
 }
 
 impl LlamaCache {
-    fn new(inner: Cache) -> Self {
+    pub fn new(inner: Cache) -> Self {
         Self {
             inner,
             seqlen_offset: 0,

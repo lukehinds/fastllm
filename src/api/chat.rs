@@ -6,10 +6,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use futures::stream::{self, Stream, StreamExt};
-use std::{convert::Infallible, pin::Pin};
-use tokio_stream::wrappers::ReceiverStream;
-use bytes::Bytes;
+use futures::stream::{self, StreamExt};
+use std::convert::Infallible;
 
 use crate::models::ModelWrapper;
 
