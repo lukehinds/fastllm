@@ -290,7 +290,6 @@ impl MiniLMModel {
         let tensors = candle_core::safetensors::load_buffer(&weights, &device)
             .map_err(|e| anyhow::anyhow!("Failed to load model weights: {}", e))?;
 
-        tracing::info!("Available tensors:");
         for name in tensors.keys() {
             tracing::info!("  {}", name);
         }

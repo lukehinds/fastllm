@@ -94,6 +94,7 @@ pub async fn create_chat_completion(
     Json(request): Json<ChatCompletionRequest>,
 ) -> Result<Response, (StatusCode, Json<super::ErrorResponse>)> {
     // Validate that the requested model matches the loaded model
+    tracing::info!("Handling create_chat_completion request");
     let model_lock = model.lock().await;
     let loaded_model_id = model_lock.model_id();
     if request.model != loaded_model_id {
