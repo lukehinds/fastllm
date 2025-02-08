@@ -49,11 +49,17 @@ pub async fn create_embedding(
     Json(request): Json<EmbeddingRequest>,
 ) -> Result<Json<EmbeddingResponse>, (StatusCode, Json<super::ErrorResponse>)> {
     // Get model lock
+    tracing::info!("Handling create_embedding request");
     let model_lock = model.lock().await;
 
     // Validate model
     let loaded_model_id = model_lock.model_id();
     if request.model != loaded_model_id {
+        tracing::error!(
+            "Model mismatch: requested model '{}' does not match loaded model '{}'",
+            request.model,
+            loaded_model_id
+        );
         return Err((
             StatusCode::BAD_REQUEST,
             Json(super::ErrorResponse::new(
@@ -110,6 +116,11 @@ pub async fn compute_similarity(
     // Validate model
     let loaded_model_id = model_lock.model_id();
     if request.model != loaded_model_id {
+        tracing::error!(
+            "Model mismatch: requested model '{}' does not match loaded model '{}'",
+            request.model,
+            loaded_model_id
+        );
         return Err((
             StatusCode::BAD_REQUEST,
             Json(super::ErrorResponse::new(
@@ -133,7 +144,9 @@ pub async fn compute_similarity(
             }));
         }
     }
-
+    tracing::error!(
+        "Failed to compute similarity or model does not support similarity computation"
+    );
     Err((
         StatusCode::INTERNAL_SERVER_ERROR,
         Json(super::ErrorResponse::new(
