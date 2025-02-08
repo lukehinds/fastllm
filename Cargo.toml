@@ -12,9 +12,6 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-http = { version = "0.5", features = ["trace"] }
-candle-core = { git = "https://github.com/huggingface/candle.git"}
-candle-nn = { git = "https://github.com/huggingface/candle.git"}
-candle-transformers = { git = "https://github.com/huggingface/candle.git"}
 tokenizers = "0.21.0"
 hf-hub = { version = "0.3", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
@@ -27,11 +24,15 @@ dotenv = "0.15.0"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+candle-core = { version = "0.8.2", features = ["metal"] }
+candle-nn = { version = "0.8.2", features = ["metal"] }
+candle-transformers = { version = "0.8.2", features = ["metal"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-core = { version = "0.8.2", features = ["cuda"] }
+candle-nn = { version = "0.8.2", features = ["cuda"] }
+candle-transformers = { version = "0.8.2", features = ["cuda"] }
+
+[features] 
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
+cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]

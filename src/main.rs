@@ -42,19 +42,19 @@ async fn main() -> Result<()> {
 
     // Create a span for the main function
     let _guard = tracing::info_span!("main").entered();
-    
+
     // Parse command line arguments
     let args = Args::parse();
     tracing::info!("Loading config from: {}", args.config);
 
     // Load configuration
     let mut config = config::Config::from_file(&args.config)?;
-    
+
     // Override model if specified in CLI args
     if let Some(model_id) = args.model {
         config.model.model_id = model_id;
     }
-    
+
     tracing::info!("Config loaded: {:?}", config);
 
     // Initialize device based on platform availability
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
 
     let default_dtype = models::default_dtype();
     tracing::info!("Using default dtype: {:?} (may be overridden by model's config.json)", default_dtype);
-    
+
     tracing::info!("Loading model: {}", config.model.model_id);
     // Determine model type from model ID
     let model = match config.model.model_id.as_str() {

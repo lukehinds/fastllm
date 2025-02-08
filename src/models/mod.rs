@@ -97,7 +97,7 @@ impl ModelWrapper {
         match self {
             #[cfg(test)]
             Self::Test(_, _) => panic!("Chat models do not support embeddings"),
-            Self::Llama(_, _) | Self::Qwen(_, _) | Self::Mistral(_, _) => 
+            Self::Llama(_, _) | Self::Qwen(_, _) | Self::Mistral(_, _) =>
                 panic!("Chat models do not support embeddings"),
             Self::Embedding(model) => model.embedding_size(),
         }
@@ -118,7 +118,7 @@ impl ModelWrapper {
         match self {
             #[cfg(test)]
             Self::Test(_, _) => Err(anyhow::anyhow!("Chat models do not support embeddings")),
-            Self::Llama(_, _) | Self::Qwen(_, _) | Self::Mistral(_, _) => 
+            Self::Llama(_, _) | Self::Qwen(_, _) | Self::Mistral(_, _) =>
                 Err(anyhow::anyhow!("Chat models do not support embeddings")),
             Self::Embedding(model) => model.embed(text),
         }
@@ -255,7 +255,7 @@ mod tests {
         ]);
         let merges = vec![];
         let bpe = BPE::new(vocab, merges);
-        
+
         // Create tokenizer with the BPE model
         Tokenizer::new(bpe)
     }
