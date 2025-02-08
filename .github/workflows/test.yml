@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -60,5 +60,39 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install CUDA
+        run: |
+          sudo apt update
+          sudo apt install -y nvidia-cuda-toolkit
+          echo "CUDA_PATH=/usr/local/cuda" >> $GITHUB_ENV
+          echo "CUDA_ROOT=/usr/local/cuda" >> $GITHUB_ENV
+          echo "CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda" >> $GITHUB_ENV
+          echo "PATH=$PATH:/usr/local/cuda/bin" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64" >> $GITHUB_ENV
+
+      - name: Verify CUDA installation
+        run: nvcc --version
+
       - name: Build
         run: cargo build --verbose --no-default-features --features cuda
+
+  build-macos-metal:
+    name: Build (MacOS Metal)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Metal dependencies
+        run: |
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+          echo "Using Metal API for Apple GPUs"
+
+      - name: Build
+        run: cargo build --verbose --no-default-features --features metal
