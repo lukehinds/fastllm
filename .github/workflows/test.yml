@@ -57,11 +57,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install CUDA Development Libraries
-        run: |
-          sudo apt update
-          sudo apt install -y cuda-nvcc-11-8 libcudart11.8 libcublas-dev
-
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
