@@ -25,6 +25,8 @@ futures = "0.3.30"
 futures-util = "0.3.30"
 dotenv = "0.15.0"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
+tokio-stream = "0.1"
+bytes = "1.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }

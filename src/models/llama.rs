@@ -2,12 +2,14 @@ use anyhow::{Context, Result};
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::llama::{Config as LlamaConfig, Cache, LlamaEosToks, Llama as CandelLlama};
+use std::any::Any;
 
 pub type Llama = CandelLlama;
 use serde::Deserialize;
 use std::collections::HashMap;
 
 use super::model_initializer::ModelInitializer;
+use super::cache::ModelCache;
 
 // Define a custom config that we can deserialize from JSON
 #[derive(Deserialize, Clone)]
@@ -45,14 +47,51 @@ impl From<ConfigFile> for LlamaConfig {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LlamaWithConfig {
     model: Llama,
 }
 
+// Implement Send and Sync since Llama is thread-safe
+unsafe impl Send for LlamaWithConfig {}
+unsafe impl Sync for LlamaWithConfig {}
+
+#[derive(Debug)]
+pub struct LlamaCache {
+    inner: Cache,
+    seqlen_offset: usize,
+}
+
+impl LlamaCache {
+    fn new(inner: Cache) -> Self {
+        Self {
+            inner,
+            seqlen_offset: 0,
+        }
+    }
+}
+
+impl ModelCache for LlamaCache {
+    fn increment_offset(&mut self) {
+        self.seqlen_offset += 1;
+    }
+    
+    fn reset(&mut self) {
+        self.seqlen_offset = 0;
+    }
+    
+    fn get_offset(&self) -> usize {
+        self.seqlen_offset
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
 impl ModelInitializer for LlamaWithConfig {
     type Config = ConfigFile;
-    type Cache = Cache;
+    type Cache = LlamaCache;
 
     fn initialize_model(
         config: &Self::Config,
@@ -69,8 +108,9 @@ impl ModelInitializer for LlamaWithConfig {
         let vb = VarBuilder::from_tensors(tensors, dtype, device);
         
         tracing::info!("Initializing model cache");
-        let cache = Cache::new(true, dtype, &llama_config, device)
+        let inner_cache = Cache::new(true, dtype, &llama_config, device)
             .context("Failed to initialize model cache")?;
+        let cache = LlamaCache::new(inner_cache);
         
         tracing::info!("Initializing model");
         let model = Llama::load(vb, &llama_config)
@@ -80,8 +120,6 @@ impl ModelInitializer for LlamaWithConfig {
     }
 
     fn initialize_cache(device: &Device, dtype: DType) -> Result<Self::Cache> {
-        // This method can't access `self`, so we need to create a default config
-        // These values are for TinyLlama-1.1B-Chat-v1.0
         let default_config = LlamaConfig {
             hidden_size: 2048,
             intermediate_size: 5632,
@@ -98,8 +136,9 @@ impl ModelInitializer for LlamaWithConfig {
             tie_word_embeddings: false,
             max_position_embeddings: 2048,
         };
-        Cache::new(true, dtype, &default_config, device)
-            .context("Failed to initialize model cache")
+        let inner_cache = Cache::new(true, dtype, &default_config, device)
+            .context("Failed to initialize model cache")?;
+        Ok(LlamaCache::new(inner_cache))
     }
 
     fn forward(
@@ -108,6 +147,6 @@ impl ModelInitializer for LlamaWithConfig {
         pos: usize,
         cache: &mut Self::Cache,
     ) -> Result<Tensor> {
-        Ok(self.model.forward(input, pos, cache)?)
+        Ok(self.model.forward(input, pos, &mut cache.inner)?)
     }
 }

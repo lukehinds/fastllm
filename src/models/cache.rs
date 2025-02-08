@@ -1,10 +1,12 @@
 use std::fmt::Debug;
+use std::any::Any;
 
 #[allow(unused)]
 pub trait ModelCache: Send + Debug {
     fn increment_offset(&mut self);
     fn reset(&mut self);
     fn get_offset(&self) -> usize;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 #[derive(Debug)]
@@ -31,6 +33,10 @@ impl ModelCache for CommonCache {
     
     fn get_offset(&self) -> usize {
         self.seqlen_offset
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
