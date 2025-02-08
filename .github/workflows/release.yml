@@ -42,25 +42,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install CUDA (Only for CUDA Builds)
-        if: matrix.features == 'cuda'
-        uses: Jimver/cuda-toolkit@v0.2.14
-        with:
-          cuda: '11.8.0'
-          sub-packages: '["nvcc", "cudart", "cublas", "cublas-dev"]'
-
-      - name: Print CUDA installer log
+      - name: Install CUDA Development Libraries
         if: matrix.features == 'cuda'
         run: |
-          echo "=== CUDA Installer Log ==="
-          if [ -f "/var/log/cuda-installer.log" ]; then
-            sudo cat /var/log/cuda-installer.log
-          else
-            echo "CUDA installer log not found at /var/log/cuda-installer.log"
-            echo "Searching for cuda-installer.log in other locations..."
-            sudo find / -name "cuda-installer.log" 2>/dev/null || echo "No cuda-installer.log found"
-          fi
-          echo "=== End CUDA Installer Log ==="
+          sudo apt update
+          sudo apt install -y cuda-nvcc-11-8 libcudart11.8 libcublas-dev
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
