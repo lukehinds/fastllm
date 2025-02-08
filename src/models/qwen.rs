@@ -4,15 +4,28 @@ use candle_nn::VarBuilder;
 use candle_transformers::models::qwen2::{Config as QwenConfig, ModelForCausalLM as Qwen};
 use candle_transformers::generation::LogitsProcessor;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::any::Any;
 
 use super::model_initializer::ModelInitializer;
-use super::{ModelCache, CommonCache, BaseModelConfig, ModelConfigValidation, ModelForward, ModelGeneration};
+use super::{ModelCache, BaseModelConfig, ModelConfigValidation, ModelForward, ModelGeneration};
 
 #[derive(Debug)]
 pub struct QwenWithConfig {
     model: RefCell<Qwen>,
 }
+
+// Implement Clone manually since RefCell doesn't implement Clone
+impl Clone for QwenWithConfig {
+    fn clone(&self) -> Self {
+        Self {
+            model: RefCell::new(self.model.borrow().clone()),
+        }
+    }
+}
+
+// Implement Send and Sync since Qwen is thread-safe
+unsafe impl Send for QwenWithConfig {}
+unsafe impl Sync for QwenWithConfig {}
 
 impl From<BaseModelConfig> for QwenConfig {
     fn from(base: BaseModelConfig) -> Self {
@@ -43,6 +56,78 @@ impl From<BaseModelConfig> for QwenConfig {
     }
 }
 
+#[derive(Debug)]
+pub struct QwenCache {
+    seqlen_offset: usize,
+}
+
+impl QwenCache {
+    pub fn new() -> Self {
+        Self { seqlen_offset: 0 }
+    }
+}
+
+impl ModelCache for QwenCache {
+    fn increment_offset(&mut self) {
+        self.seqlen_offset += 1;
+        tracing::debug!("Cache seqlen_offset incremented to {}", self.seqlen_offset);
+    }
+    
+    fn reset(&mut self) {
+        self.seqlen_offset = 0;
+        tracing::debug!("Cache reset");
+    }
+    
+    fn get_offset(&self) -> usize {
+        self.seqlen_offset
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+impl ModelInitializer for QwenWithConfig {
+    type Config = BaseModelConfig;
+    type Cache = QwenCache;
+
+    fn initialize_model(
+        config: &Self::Config,
+        tensors: std::collections::HashMap<String, Tensor>,
+        dtype: DType,
+        device: &Device,
+    ) -> Result<(Self, Self::Cache)> {
+        let qwen_config = QwenConfig::from(config.clone());
+        
+        tracing::debug!(
+            "Model config: hidden_size={}, layers={}, heads={}", 
+            qwen_config.hidden_size,
+            qwen_config.num_hidden_layers,
+            qwen_config.num_attention_heads,
+        );
+
+        let vb = VarBuilder::from_tensors(tensors, dtype, device);
+        let model = Qwen::new(&qwen_config, vb)?;
+
+        Ok((Self { 
+            model: RefCell::new(model),
+        }, QwenCache::new()))
+    }
+
+    fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
+        Ok(QwenCache::new())
+    }
+
+    fn forward(
+        &self,
+        input: &Tensor,
+        _pos: usize,
+        cache: &mut Self::Cache,
+    ) -> Result<Tensor> {
+        self.forward_pass(input, cache)
+    }
+}
+
 impl ModelForward for QwenWithConfig {
     fn forward_pass(&self, input: &Tensor, cache: &mut dyn ModelCache) -> Result<Tensor> {
         let (batch_size, seq_len) = input.dims2()?;
@@ -68,47 +153,6 @@ impl ModelForward for QwenWithConfig {
     }
 }
 
-impl ModelInitializer for QwenWithConfig {
-    type Config = BaseModelConfig;
-    type Cache = CommonCache;
-
-    fn initialize_model(
-        config: &Self::Config,
-        tensors: HashMap<String, Tensor>,
-        dtype: DType,
-        device: &Device,
-    ) -> Result<(Self, Self::Cache)> {
-        let qwen_config = QwenConfig::from(config.clone());
-        
-        tracing::debug!(
-            "Model config: hidden_size={}, layers={}, heads={}", 
-            qwen_config.hidden_size,
-            qwen_config.num_hidden_layers,
-            qwen_config.num_attention_heads,
-        );
-
-        let vb = VarBuilder::from_tensors(tensors, dtype, device);
-        let model = Qwen::new(&qwen_config, vb)?;
-
-        Ok((Self { 
-            model: RefCell::new(model),
-        }, CommonCache::new()))
-    }
-
-    fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
-        Ok(CommonCache::new())
-    }
-
-    fn forward(
-        &self,
-        input: &Tensor,
-        _pos: usize,
-        cache: &mut Self::Cache,
-    ) -> Result<Tensor> {
-        self.forward_pass(input, cache)
-    }
-}
-
 #[allow(unused)]
 impl ModelGeneration for QwenWithConfig {
     fn sample_next_token(&self, logits: &Tensor, temperature: f32) -> Result<usize> {
@@ -124,5 +168,94 @@ impl ModelGeneration for QwenWithConfig {
 
     fn get_eos_token_id(&self) -> Option<usize> {
         Some(2)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use candle_core::Device;
+
+    #[test]
+    fn test_qwen_cache_operations() {
+        let mut cache = QwenCache::new();
+        assert_eq!(cache.get_offset(), 0, "Initial offset should be 0");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 1, "Offset should be 1 after increment");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 2, "Offset should be 2 after second increment");
+
+        cache.reset();
+        assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
+    }
+
+    #[test]
+    fn test_qwen_config_conversion() {
+        let base_config = BaseModelConfig {
+            hidden_size: 512,
+            intermediate_size: 1024,
+            vocab_size: 1000,
+            num_hidden_layers: 2,
+            num_attention_heads: 8,
+            num_key_value_heads: Some(8),
+            rms_norm_eps: 1e-5,
+            rope_theta: Some(10000.0),
+            max_position_embeddings: Some(2048),
+            sliding_window: Some(4096),
+            torch_dtype: None,
+        };
+
+        let qwen_config = QwenConfig::from(base_config);
+
+        assert_eq!(qwen_config.hidden_size, 512);
+        assert_eq!(qwen_config.intermediate_size, 1024);
+        assert_eq!(qwen_config.vocab_size, 1000);
+        assert_eq!(qwen_config.num_hidden_layers, 2);
+        assert_eq!(qwen_config.num_attention_heads, 8);
+        assert_eq!(qwen_config.num_key_value_heads, 8);
+        assert_eq!(qwen_config.max_position_embeddings, 2048);
+        assert_eq!(qwen_config.rope_theta, 10000.0);
+        assert_eq!(qwen_config.sliding_window, 4096);
+    }
+
+    #[test]
+    fn test_qwen_cache_as_any() {
+        let mut cache = QwenCache::new();
+        let any_cache = cache.as_any_mut();
+        assert!(any_cache.downcast_mut::<QwenCache>().is_some(), "Should be able to downcast to QwenCache");
+        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+    }
+
+    #[test]
+    fn test_qwen_clone() {
+        let device = Device::Cpu;
+        let dtype = DType::F32;
+        let config = QwenConfig {
+            hidden_size: 512,
+            intermediate_size: 1024,
+            vocab_size: 1000,
+            num_hidden_layers: 2,
+            num_attention_heads: 8,
+            num_key_value_heads: 8,
+            rms_norm_eps: 1e-5,
+            rope_theta: 10000.0,
+            max_position_embeddings: 2048,
+            sliding_window: 4096,
+            max_window_layers: 1,
+            tie_word_embeddings: false,
+            use_sliding_window: true,
+            hidden_act: BaseModelConfig::get_activation(),
+        };
+
+        let vb = VarBuilder::zeros(dtype, &device);
+        let model = Qwen::new(&config, vb).unwrap();
+        let qwen = QwenWithConfig {
+            model: RefCell::new(model),
+        };
+
+        let _cloned = qwen.clone();
+        // If we get here without panicking, the clone worked
     }
 }

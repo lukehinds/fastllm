@@ -126,6 +126,7 @@ curl http://localhost:3000/v1/chat/completions \
       }
     ],
     "max_tokens": 50,
+    "stream": true,
     "temperature": 0.7
   }'
 ```
@@ -151,6 +152,7 @@ Create a chat completion. Compatible with OpenAI's chat completion API.
         }
     ],
     "max_tokens": 256,
+    "stream": true,
     "temperature": 0.7
 }
 ```

@@ -1,10 +1,12 @@
 use std::fmt::Debug;
+use std::any::Any;
 
 #[allow(unused)]
 pub trait ModelCache: Send + Debug {
     fn increment_offset(&mut self);
     fn reset(&mut self);
     fn get_offset(&self) -> usize;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 #[derive(Debug)]
@@ -13,6 +15,7 @@ pub struct CommonCache {
 }
 
 impl CommonCache {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self { seqlen_offset: 0 }
     }
@@ -31,6 +34,10 @@ impl ModelCache for CommonCache {
     
     fn get_offset(&self) -> usize {
         self.seqlen_offset
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
@@ -51,5 +58,20 @@ mod tests {
 
         cache.reset();
         assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
+    }
+
+    #[test]
+    fn test_common_cache_as_any() {
+        let mut cache = CommonCache::new();
+        let any_cache = cache.as_any_mut();
+        assert!(any_cache.downcast_mut::<CommonCache>().is_some(), "Should be able to downcast to CommonCache");
+        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+    }
+
+    #[test]
+    fn test_common_cache_debug() {
+        let cache = CommonCache::new();
+        let debug_str = format!("{:?}", cache);
+        assert!(debug_str.contains("CommonCache"), "Debug output should contain type name");
     }
 } 

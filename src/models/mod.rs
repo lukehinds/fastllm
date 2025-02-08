@@ -2,7 +2,12 @@ use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use tokenizers::Tokenizer;
-use std::collections::HashMap;
+
+use futures::stream::Stream;
+use tokio_stream::wrappers::ReceiverStream;
+use tokio::sync::mpsc;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 pub mod llama;
 pub mod mistral;
@@ -22,7 +27,7 @@ mod cache;
 mod config;
 mod traits;
 
-pub use cache::{ModelCache, CommonCache};
+pub use cache::ModelCache;
 pub use config::{BaseModelConfig, ModelConfigValidation};
 pub use traits::{ModelForward, ModelGeneration};
 use embeddings::{EmbeddingModel, EmbeddingOutput};
@@ -34,19 +39,18 @@ pub(crate) struct MockLlamaWithConfig {}
 #[cfg(test)]
 impl ModelInitializer for MockLlamaWithConfig {
     type Config = BaseModelConfig;
-    type Cache = CommonCache;
-
+    type Cache = cache::CommonCache;
     fn initialize_model(
         _config: &Self::Config,
-        _tensors: HashMap<String, Tensor>,
+        _tensors: std::collections::HashMap<String, Tensor>,
         _dtype: DType,
         _device: &Device,
     ) -> Result<(Self, Self::Cache)> {
-        Ok((Self {}, CommonCache::new()))
+        Ok((Self {}, cache::CommonCache::new()))
     }
 
     fn initialize_cache(_device: &Device, _dtype: DType) -> Result<Self::Cache> {
-        Ok(CommonCache::new())
+        Ok(cache::CommonCache::new())
     }
 
     fn forward(
@@ -123,6 +127,182 @@ impl ModelWrapper {
             Self::Embedding(model) => model.embed(text),
         }
     }
+
+    pub fn generate_stream(
+        &mut self,
+        prompt: &str,
+        max_tokens: usize,
+        temperature: f32,
+    ) -> Result<impl Stream<Item = Result<String, anyhow::Error>>> {
+        let (tx, rx) = mpsc::channel(32);
+        let prompt = prompt.to_string();
+        
+        match self {
+            #[cfg(test)]
+            Self::Test(_, _) => {
+                return Err(anyhow::anyhow!("Test model does not support streaming"));
+            }
+            Self::Llama(model, _) => {
+                let tokenizer = model.tokenizer.clone();
+                let device = model.device.clone();
+                let dtype = model.dtype;
+                let model = Arc::new(RwLock::new(model.model.clone()));
+                let mut cache = LlamaWithConfig::initialize_cache(&device, dtype)?;
+                let logits_processor = LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
+
+                tokio::spawn(async move {
+                    if let Err(e) = generate_tokens_inner(
+                        &prompt,
+                        max_tokens,
+                        model,
+                        &mut cache,
+                        logits_processor,
+                        &tokenizer,
+                        &device,
+                        tx,
+                    ).await {
+                        tracing::error!("Token generation error: {}", e);
+                    }
+                });
+            }
+            Self::Qwen(model, _) => {
+                let tokenizer = model.tokenizer.clone();
+                let device = model.device.clone();
+                let dtype = model.dtype;
+                let model = Arc::new(RwLock::new(model.model.clone()));
+                let mut cache = QwenWithConfig::initialize_cache(&device, dtype)?;
+                let logits_processor = LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
+
+                tokio::spawn(async move {
+                    if let Err(e) = generate_tokens_inner(
+                        &prompt,
+                        max_tokens,
+                        model,
+                        &mut cache,
+                        logits_processor,
+                        &tokenizer,
+                        &device,
+                        tx,
+                    ).await {
+                        tracing::error!("Token generation error: {}", e);
+                    }
+                });
+            }
+            Self::Mistral(model, _) => {
+                let tokenizer = model.tokenizer.clone();
+                let device = model.device.clone();
+                let dtype = model.dtype;
+                let model = Arc::new(RwLock::new(model.model.clone()));
+                let mut cache = MistralWithConfig::initialize_cache(&device, dtype)?;
+                let logits_processor = LogitsProcessor::new(Default::default(), Some(temperature as f64), None);
+
+                tokio::spawn(async move {
+                    if let Err(e) = generate_tokens_inner(
+                        &prompt,
+                        max_tokens,
+                        model,
+                        &mut cache,
+                        logits_processor,
+                        &tokenizer,
+                        &device,
+                        tx,
+                    ).await {
+                        tracing::error!("Token generation error: {}", e);
+                    }
+                });
+            }
+            Self::Embedding(_) => {
+                return Err(anyhow::anyhow!("Embedding models do not support text generation"));
+            }
+        }
+
+        Ok(ReceiverStream::new(rx))
+    }
+}
+
+pub trait ThreadSafeModel: Send + Sync {
+    fn forward(&self, input: &Tensor, pos: usize, cache: &mut dyn cache::ModelCache) -> Result<Tensor>;
+}
+
+impl<T> ThreadSafeModel for RwLock<T> 
+where 
+    T: ModelInitializer + Send + Sync,
+    T::Cache: 'static,
+{
+    fn forward(&self, input: &Tensor, pos: usize, cache: &mut dyn cache::ModelCache) -> Result<Tensor> {
+        let cache = cache.as_any_mut()
+            .downcast_mut::<<T as ModelInitializer>::Cache>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to downcast cache"))?;
+        self.read().unwrap().forward(input, pos, cache)
+    }
+}
+
+async fn generate_tokens_inner<M: ThreadSafeModel>(
+    prompt: &str,
+    max_tokens: usize,
+    model: Arc<M>,
+    cache: &mut dyn cache::ModelCache,
+    mut logits_processor: LogitsProcessor,
+    tokenizer: &Tokenizer,
+    device: &Device,
+    tx: mpsc::Sender<Result<String, anyhow::Error>>,
+) -> Result<()> {
+    let encoding = tokenizer.encode(prompt, true)
+        .map_err(|e| anyhow::anyhow!("Tokenization error: {}", e))?;
+    let input_ids = encoding.get_ids();
+
+    // Create input tensor with shape [batch_size=1, seq_len]
+    let input_tensor = Tensor::new(input_ids, device)
+        .map_err(|e| anyhow::anyhow!("Failed to create input tensor: {}", e))?;
+    let input_dims = input_tensor.dims();
+
+    // Reshape input tensor to [batch_size=1, seq_len]
+    let input_tensor = input_tensor.reshape((1, input_dims[0]))
+        .map_err(|e| anyhow::anyhow!("Failed to reshape input tensor: {}", e))?;
+
+    let mut pos = 0;
+
+    // Initial forward pass
+    let mut logits = model.forward(&input_tensor, pos, cache)
+        .map_err(|e| anyhow::anyhow!("Model forward pass failed: {}", e))?;
+
+    pos += input_dims[0];
+
+    // Generate new tokens
+    for _ in 0..max_tokens {
+        // Get the logits for the last position
+        let last_logits = logits.get(0)?.flatten_all()?;
+
+        // Sample the next token
+        let next_token_id = logits_processor.sample(&last_logits)
+            .map_err(|e| anyhow::anyhow!("Failed to sample next token: {}", e))?;
+
+        if let Some(eos_token_id) = tokenizer.token_to_id("</s>") {
+            if next_token_id == eos_token_id {
+                break;
+            }
+        }
+
+        // Decode the token and send it through the channel
+        let token = tokenizer.decode(&[next_token_id], true)
+            .map_err(|e| anyhow::anyhow!("Decoding error: {}", e))?;
+
+        if tx.send(Ok(token)).await.is_err() {
+            break;
+        }
+
+        // Create tensor for the next token
+        let next_input = Tensor::new(&[next_token_id], device)
+            .map_err(|e| anyhow::anyhow!("Failed to create next token tensor: {}", e))?
+            .reshape((1, 1))
+            .map_err(|e| anyhow::anyhow!("Failed to reshape next token tensor: {}", e))?;
+
+        logits = model.forward(&next_input, pos, cache)
+            .map_err(|e| anyhow::anyhow!("Model forward pass failed: {}", e))?;
+        pos += 1;
+    }
+
+    Ok(())
 }
 
 pub struct Model<M: ModelInitializer> {
@@ -270,7 +450,7 @@ mod tests {
                 create_test_tokenizer(),
                 MockLlamaWithConfig {},
                 Device::Cpu,
-                CommonCache::new(),
+                cache::CommonCache::new(),
             ),
             model_id.to_string()
         );
@@ -286,7 +466,7 @@ mod tests {
                 create_test_tokenizer(),
                 MockLlamaWithConfig {},
                 Device::Cpu,
-                CommonCache::new(),
+                cache::CommonCache::new(),
             ),
             model_id.to_string()
         );
