@@ -132,7 +132,7 @@ impl From<ConfigFile> for MistralConfig {
             vocab_size: cf.vocab_size,
             num_hidden_layers: cf.num_hidden_layers,
             num_attention_heads: cf.num_attention_heads,
-            num_key_value_heads: num_key_value_heads,
+            num_key_value_heads,
             rms_norm_eps: cf.rms_norm_eps,
             rope_theta: cf.rope_theta.unwrap_or(10000.0),
             max_position_embeddings: cf.max_position_embeddings.unwrap_or(32768),

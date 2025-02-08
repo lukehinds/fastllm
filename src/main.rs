@@ -1,3 +1,5 @@
+#![allow(clippy::module_inception)]
+#![allow(clippy::too_many_arguments)]
 use anyhow::Result;
 use axum::Router;
 use clap::Parser;

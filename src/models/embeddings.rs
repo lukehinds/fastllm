@@ -79,31 +79,31 @@ impl BertAttention {
             query: linear(
                 hidden_size,
                 hidden_size,
-                vb.pp(&format!("{}.attention.self.query", prefix)),
+                vb.pp(format!("{}.attention.self.query", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create query layer: {}", e))?,
             key: linear(
                 hidden_size,
                 hidden_size,
-                vb.pp(&format!("{}.attention.self.key", prefix)),
+                vb.pp(format!("{}.attention.self.key", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create key layer: {}", e))?,
             value: linear(
                 hidden_size,
                 hidden_size,
-                vb.pp(&format!("{}.attention.self.value", prefix)),
+                vb.pp(format!("{}.attention.self.value", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create value layer: {}", e))?,
             output: linear(
                 hidden_size,
                 hidden_size,
-                vb.pp(&format!("{}.attention.output.dense", prefix)),
+                vb.pp(format!("{}.attention.output.dense", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create attention output layer: {}", e))?,
             layer_norm: candle_nn::layer_norm(
                 hidden_size,
                 config.layer_norm_eps,
-                vb.pp(&format!("{}.attention.output.LayerNorm", prefix)),
+                vb.pp(format!("{}.attention.output.LayerNorm", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create attention layer norm: {}", e))?,
             num_attention_heads,
@@ -200,19 +200,19 @@ impl BertLayer {
             intermediate: linear(
                 hidden_size,
                 intermediate_size,
-                vb.pp(&format!("{}.intermediate.dense", prefix)),
+                vb.pp(format!("{}.intermediate.dense", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create intermediate layer: {}", e))?,
             output: linear(
                 intermediate_size,
                 hidden_size,
-                vb.pp(&format!("{}.output.dense", prefix)),
+                vb.pp(format!("{}.output.dense", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create output layer: {}", e))?,
             layer_norm2: candle_nn::layer_norm(
                 hidden_size,
                 config.layer_norm_eps,
-                vb.pp(&format!("{}.output.LayerNorm", prefix)),
+                vb.pp(format!("{}.output.LayerNorm", prefix)),
             )
             .map_err(|e| anyhow::anyhow!("Failed to create layer norm: {}", e))?,
         })
