@@ -10,7 +10,7 @@ mod config;
 mod models;
 mod providers;
 
-use models::load_model;
+use models::ModelRegistry;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -96,54 +96,19 @@ async fn main() -> Result<()> {
 
     tracing::info!("Final device selection: {:?}", device);
 
-    let default_dtype = models::default_dtype();
-    tracing::info!("Using default dtype: {:?} (may be overridden by model's config.json)", default_dtype);
-    
     tracing::info!("Loading model: {}", config.model.model_id);
-    // Determine model type from model ID
-    let model = match config.model.model_id.as_str() {
-        id if id.contains("Qwen") => {
-            models::ModelWrapper::Qwen(
-                load_model::<models::qwen::QwenWithConfig>(
-                    &config.model.model_id,
-                    &config.model.revision,
-                    default_dtype,
-                    &device,
-                ).await?,
-                config.model.model_id.clone()
-            )
-        },
-        id if id.contains("Mistral") => {
-            tracing::info!("Loading Mistral model");
-            models::ModelWrapper::Mistral(
-                load_model::<models::mistral::MistralWithConfig>(
-                    &config.model.model_id,
-                    &config.model.revision,
-                    default_dtype,
-                    &device,
-                ).await?,
-                config.model.model_id.clone()
-            )
-        },
-        id if id.contains("all-MiniLM-L6-v2") => {
-            models::ModelWrapper::Embedding(
-                Box::new(models::embeddings::MiniLMModel::new(&config.model.model_id)?)
-            )
-        },
-        id if id.contains("Llama") => {
-            tracing::info!("Loading Llama model");
-            models::ModelWrapper::Llama(
-                load_model::<models::llama::LlamaWithConfig>(
-                    &config.model.model_id,
-                    &config.model.revision,
-                    default_dtype,
-                    &device,
-                ).await?,
-                config.model.model_id.clone()
-            )
-        },
-        _ => anyhow::bail!("Unsupported model: {}", config.model.model_id),
-    };
+    
+    // Initialize model registry
+    let registry = ModelRegistry::new();
+    
+    // Create model using registry
+    let model = registry.create_model(
+        &config.model.model_id,
+        &config.model.revision,
+        candle_core::DType::BF16,
+        &device,
+    ).await?;
+
     tracing::info!("Model loaded successfully");
 
     // Create shared model state

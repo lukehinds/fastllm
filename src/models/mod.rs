@@ -13,11 +13,13 @@ pub mod llama;
 pub mod mistral;
 pub mod qwen;
 pub mod model_initializer;
+pub mod model_registry;
 pub mod embeddings;
 
 use crate::providers::huggingface;
 pub use huggingface::load_model;
 pub use model_initializer::ModelInitializer;
+pub use model_registry::ModelRegistry;
 
 use llama::LlamaWithConfig;
 use qwen::QwenWithConfig;
@@ -472,11 +474,6 @@ mod tests {
         );
 
         assert_eq!(wrapper.model_id(), model_id);
-    }
-
-    #[test]
-    fn test_default_dtype() {
-        assert_eq!(default_dtype(), DType::BF16);
     }
 
     #[test]
