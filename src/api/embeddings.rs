@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::models::{ModelWrapper, embeddings::EmbeddingOutput};
+use crate::models::{embeddings::EmbeddingOutput, ModelWrapper};
 
 #[derive(Debug, Deserialize)]
 pub struct EmbeddingRequest {
@@ -50,7 +50,7 @@ pub async fn create_embedding(
 ) -> Result<Json<EmbeddingResponse>, (StatusCode, Json<super::ErrorResponse>)> {
     // Get model lock
     let model_lock = model.lock().await;
-    
+
     // Validate model
     let loaded_model_id = model_lock.model_id();
     if request.model != loaded_model_id {
@@ -106,7 +106,7 @@ pub async fn compute_similarity(
 ) -> Result<Json<SimilarityResponse>, (StatusCode, Json<super::ErrorResponse>)> {
     // Get model lock
     let model_lock = model.lock().await;
-    
+
     // Validate model
     let loaded_model_id = model_lock.model_id();
     if request.model != loaded_model_id {
@@ -141,4 +141,4 @@ pub async fn compute_similarity(
             "model_error",
         )),
     ))
-} 
+}

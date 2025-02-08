@@ -14,7 +14,10 @@ impl TorchDTypeConverter for DefaultDTypeConverter {
             "float64" => DType::F64,
             "bfloat16" => DType::BF16,
             _ => {
-                tracing::warn!("Unsupported torch_dtype: {}, defaulting to F32", torch_dtype);
+                tracing::warn!(
+                    "Unsupported torch_dtype: {}, defaulting to F32",
+                    torch_dtype
+                );
                 DType::F32
             }
         }
@@ -30,7 +33,10 @@ pub fn get_dtype(config_torch_dtype: Option<&String>, default_dtype: DType) -> D
             candle_dtype
         })
         .unwrap_or_else(|| {
-            tracing::info!("No torch_dtype specified, using default: {:?}", default_dtype);
+            tracing::info!(
+                "No torch_dtype specified, using default: {:?}",
+                default_dtype
+            );
             default_dtype
         });
 

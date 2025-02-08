@@ -18,12 +18,7 @@ pub trait ModelInitializer: Sized {
 
     fn initialize_cache(device: &Device, dtype: DType) -> Result<Self::Cache>;
 
-    fn forward(
-        &self,
-        input: &Tensor,
-        pos: usize,
-        cache: &mut Self::Cache,
-    ) -> Result<Tensor>;
+    fn forward(&self, input: &Tensor, pos: usize, cache: &mut Self::Cache) -> Result<Tensor>;
 }
 
 #[cfg(test)]
