@@ -42,28 +42,32 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install CUDA (Only for CUDA Builds)
-        if: matrix.features == 'cuda'
-        uses: Jimver/cuda-toolkit@v0.2.21
-        with:
-          method: 'network'
-          use-github-cache: false
-          cuda: '12.5.0'
-
-      - name: If Linux, install GCC 12
+      - name: Setup GCC and dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          echo "SHELL=bash" >> $GITHUB_ENV
-          sudo apt update
-          sudo apt install gcc-12 g++-12
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 12
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 12
-          echo "SHELL=bash" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install -y gcc-11 g++-11 build-essential
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
+          sudo update-alternatives --set gcc /usr/bin/gcc-11
+          sudo update-alternatives --set g++ /usr/bin/g++-11
+          gcc --version
+          g++ --version
+
+      - name: Install CUDA (Only for CUDA Builds)
+        if: matrix.features == 'cuda'
+        uses: Jimver/cuda-toolkit@v0.2.14
+        with:
+          cuda: '12.1.0'
+          method: 'network'
+          sub-packages: '["nvcc", "cudart", "cublas", "cublas-dev", "cudnn", "cudnn-dev"]'
 
       - name: Verify CUDA prerequisites
         if: matrix.features == 'cuda'
         run: |
-            nvcc --version
+          nvcc --version
+          gcc --version
+          g++ --version
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -71,16 +75,25 @@ jobs:
       - name: Build Release (Correct Feature Flags)
         run: cargo build -vv --release --target ${{ matrix.target }} --no-default-features --features ${{ matrix.features }}
 
-      - name: Prepare artifact
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+
+      - name: Copy binary to artifacts
         run: |
-          mkdir -p artifacts
-          cp target/${{ matrix.target }}/release/fastllm artifacts/${{ matrix.artifact_name }}
+          if [ -f "target/${{ matrix.target }}/release/fastllm" ]; then
+            cp "target/${{ matrix.target }}/release/fastllm" "artifacts/${{ matrix.artifact_name }}"
+          else
+            echo "Binary not found!"
+            exit 1
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
+        if: success()
         with:
           name: ${{ matrix.artifact_name }}
           path: artifacts/${{ matrix.artifact_name }}
+          if-no-files-found: error
 
   create-release:
     needs: build
