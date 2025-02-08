@@ -60,17 +60,17 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Install Fake CUDA Paths
+      - name: Create Fake CUDA Paths
         run: |
-          mkdir -p /usr/local/cuda/bin
-          mkdir -p /usr/local/cuda/lib64
-          touch /usr/local/cuda/bin/nvcc  # Fake nvcc binary
-          chmod +x /usr/local/cuda/bin/nvcc
-          echo "export PATH=/usr/local/cuda/bin:$PATH" >> $GITHUB_ENV
-          echo "export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "CUDA_PATH=/usr/local/cuda" >> $GITHUB_ENV
-          echo "CUDA_ROOT=/usr/local/cuda" >> $GITHUB_ENV
-          echo "CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda" >> $GITHUB_ENV
+          mkdir -p $HOME/cuda/bin
+          mkdir -p $HOME/cuda/lib64
+          touch $HOME/cuda/bin/nvcc  # Fake CUDA compiler
+          chmod +x $HOME/cuda/bin/nvcc
+          echo "export PATH=$HOME/cuda/bin:$PATH" >> $GITHUB_ENV
+          echo "export LD_LIBRARY_PATH=$HOME/cuda/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "export CUDA_PATH=$HOME/cuda" >> $GITHUB_ENV
+          echo "export CUDA_ROOT=$HOME/cuda" >> $GITHUB_ENV
+          echo "export CUDA_TOOLKIT_ROOT_DIR=$HOME/cuda" >> $GITHUB_ENV
 
       - name: Skip `nvidia-smi` Check
         run: echo "BINDGEN_CUDA_NOSMI=1" >> $GITHUB_ENV
