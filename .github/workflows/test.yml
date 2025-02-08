@@ -64,8 +64,12 @@ jobs:
         run: |
           mkdir -p $HOME/cuda/bin
           mkdir -p $HOME/cuda/lib64
-          touch $HOME/cuda/bin/nvcc  # Fake CUDA compiler
+
+          # Create a fake 'nvcc' script
+          echo '#!/bin/bash' > $HOME/cuda/bin/nvcc
+          echo 'echo "Fake nvcc: No-op compiler"' >> $HOME/cuda/bin/nvcc
           chmod +x $HOME/cuda/bin/nvcc
+
           echo "export PATH=$HOME/cuda/bin:$PATH" >> $GITHUB_ENV
           echo "export LD_LIBRARY_PATH=$HOME/cuda/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "export CUDA_PATH=$HOME/cuda" >> $GITHUB_ENV
