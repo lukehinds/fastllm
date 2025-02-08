@@ -33,7 +33,7 @@ pub fn get_dtype(config_torch_dtype: Option<&String>, default_dtype: DType) -> D
             tracing::info!("No torch_dtype specified, using default: {:?}", default_dtype);
             default_dtype
         });
-    
+
     tracing::info!("Final dtype being used: {:?}", dtype);
     dtype
 }
