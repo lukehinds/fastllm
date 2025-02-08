@@ -417,9 +417,6 @@ impl<M: ModelInitializer> Model<M> {
     }
 }
 
-pub fn default_dtype() -> DType {
-    DType::BF16  // Default to BF16 since that's what the model expects
-}
 
 #[cfg(test)]
 mod tests {
