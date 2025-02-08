@@ -171,3 +171,92 @@ impl ModelGeneration for QwenWithConfig {
         Some(2)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use candle_core::Device;
+
+    #[test]
+    fn test_qwen_cache_operations() {
+        let mut cache = QwenCache::new();
+        assert_eq!(cache.get_offset(), 0, "Initial offset should be 0");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 1, "Offset should be 1 after increment");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 2, "Offset should be 2 after second increment");
+
+        cache.reset();
+        assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
+    }
+
+    #[test]
+    fn test_qwen_config_conversion() {
+        let base_config = BaseModelConfig {
+            hidden_size: 512,
+            intermediate_size: 1024,
+            vocab_size: 1000,
+            num_hidden_layers: 2,
+            num_attention_heads: 8,
+            num_key_value_heads: Some(8),
+            rms_norm_eps: 1e-5,
+            rope_theta: Some(10000.0),
+            max_position_embeddings: Some(2048),
+            sliding_window: Some(4096),
+            torch_dtype: None,
+        };
+
+        let qwen_config = QwenConfig::from(base_config);
+
+        assert_eq!(qwen_config.hidden_size, 512);
+        assert_eq!(qwen_config.intermediate_size, 1024);
+        assert_eq!(qwen_config.vocab_size, 1000);
+        assert_eq!(qwen_config.num_hidden_layers, 2);
+        assert_eq!(qwen_config.num_attention_heads, 8);
+        assert_eq!(qwen_config.num_key_value_heads, 8);
+        assert_eq!(qwen_config.max_position_embeddings, 2048);
+        assert_eq!(qwen_config.rope_theta, 10000.0);
+        assert_eq!(qwen_config.sliding_window, 4096);
+    }
+
+    #[test]
+    fn test_qwen_cache_as_any() {
+        let mut cache = QwenCache::new();
+        let any_cache = cache.as_any_mut();
+        assert!(any_cache.downcast_mut::<QwenCache>().is_some(), "Should be able to downcast to QwenCache");
+        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+    }
+
+    #[test]
+    fn test_qwen_clone() {
+        let device = Device::Cpu;
+        let dtype = DType::F32;
+        let config = QwenConfig {
+            hidden_size: 512,
+            intermediate_size: 1024,
+            vocab_size: 1000,
+            num_hidden_layers: 2,
+            num_attention_heads: 8,
+            num_key_value_heads: 8,
+            rms_norm_eps: 1e-5,
+            rope_theta: 10000.0,
+            max_position_embeddings: 2048,
+            sliding_window: 4096,
+            max_window_layers: 1,
+            tie_word_embeddings: false,
+            use_sliding_window: true,
+            hidden_act: BaseModelConfig::get_activation(),
+        };
+
+        let vb = VarBuilder::zeros(dtype, &device);
+        let model = Qwen::new(&config, vb).unwrap();
+        let qwen = QwenWithConfig {
+            model: RefCell::new(model),
+        };
+
+        let _cloned = qwen.clone();
+        // If we get here without panicking, the clone worked
+    }
+}

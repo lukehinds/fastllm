@@ -150,3 +150,101 @@ impl ModelInitializer for LlamaWithConfig {
         Ok(self.model.forward(input, pos, &mut cache.inner)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use candle_core::Device;
+
+    #[test]
+    fn test_llama_cache_operations() {
+        let device = Device::Cpu;
+        let dtype = DType::F32;
+        let config = LlamaConfig {
+            hidden_size: 512,
+            intermediate_size: 1024,
+            vocab_size: 1000,
+            num_hidden_layers: 2,
+            num_attention_heads: 8,
+            num_key_value_heads: 8,
+            rms_norm_eps: 1e-5,
+            rope_theta: 10000.0,
+            max_position_embeddings: 2048,
+            use_flash_attn: false,
+            eos_token_id: Some(LlamaEosToks::Single(2)),
+            bos_token_id: Some(1),
+            rope_scaling: None,
+            tie_word_embeddings: false,
+        };
+
+        let inner_cache = Cache::new(true, dtype, &config, &device).unwrap();
+        let mut cache = LlamaCache::new(inner_cache);
+
+        assert_eq!(cache.get_offset(), 0, "Initial offset should be 0");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 1, "Offset should be 1 after increment");
+
+        cache.increment_offset();
+        assert_eq!(cache.get_offset(), 2, "Offset should be 2 after second increment");
+
+        cache.reset();
+        assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
+    }
+
+    #[test]
+    fn test_llama_config_conversion() {
+        let config_file = ConfigFile {
+            hidden_size: 512,
+            intermediate_size: 1024,
+            vocab_size: 1000,
+            num_hidden_layers: 2,
+            num_attention_heads: 8,
+            num_key_value_heads: Some(8),
+            rms_norm_eps: 1e-5,
+            rope_theta: Some(10000.0),
+            max_position_embeddings: Some(2048),
+            torch_dtype: None,
+        };
+
+        let llama_config = LlamaConfig::from(config_file);
+
+        assert_eq!(llama_config.hidden_size, 512);
+        assert_eq!(llama_config.intermediate_size, 1024);
+        assert_eq!(llama_config.vocab_size, 1000);
+        assert_eq!(llama_config.num_hidden_layers, 2);
+        assert_eq!(llama_config.num_attention_heads, 8);
+        assert_eq!(llama_config.num_key_value_heads, 8);
+        assert_eq!(llama_config.max_position_embeddings, 2048);
+        assert_eq!(llama_config.rope_theta, 10000.0);
+    }
+
+    #[test]
+    fn test_llama_cache_as_any() {
+        let device = Device::Cpu;
+        let dtype = DType::F32;
+        let config = LlamaConfig {
+            hidden_size: 512,
+            intermediate_size: 1024,
+            vocab_size: 1000,
+            num_hidden_layers: 2,
+            num_attention_heads: 8,
+            num_key_value_heads: 8,
+            rms_norm_eps: 1e-5,
+            rope_theta: 10000.0,
+            max_position_embeddings: 2048,
+            use_flash_attn: false,
+            eos_token_id: Some(LlamaEosToks::Single(2)),
+            bos_token_id: Some(1),
+            rope_scaling: None,
+            tie_word_embeddings: false,
+        };
+
+        let inner_cache = Cache::new(true, dtype, &config, &device).unwrap();
+        let mut cache = LlamaCache::new(inner_cache);
+
+        let any_cache = cache.as_any_mut();
+        assert!(any_cache.downcast_mut::<LlamaCache>().is_some(), "Should be able to downcast to LlamaCache");
+        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+    }
+}

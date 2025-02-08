@@ -58,4 +58,19 @@ mod tests {
         cache.reset();
         assert_eq!(cache.get_offset(), 0, "Offset should be 0 after reset");
     }
+
+    #[test]
+    fn test_common_cache_as_any() {
+        let mut cache = CommonCache::new();
+        let any_cache = cache.as_any_mut();
+        assert!(any_cache.downcast_mut::<CommonCache>().is_some(), "Should be able to downcast to CommonCache");
+        assert!(any_cache.downcast_mut::<String>().is_none(), "Should not be able to downcast to wrong type");
+    }
+
+    #[test]
+    fn test_common_cache_debug() {
+        let cache = CommonCache::new();
+        let debug_str = format!("{:?}", cache);
+        assert!(debug_str.contains("CommonCache"), "Debug output should contain type name");
+    }
 } 
