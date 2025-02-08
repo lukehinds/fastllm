@@ -57,11 +57,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.11
-        with:
-          cuda: '12.1.0'
-
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
