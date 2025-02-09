@@ -26,15 +26,37 @@ type ModelInitFn = Box<
 
 pub struct ModelRegistry {
     models: HashMap<String, ModelInitFn>,
+    #[cfg(test)]
+    mock_configs: HashMap<String, String>,
 }
 
 impl ModelRegistry {
     pub fn new() -> Self {
         let mut registry = Self {
             models: HashMap::new(),
+            #[cfg(test)]
+            mock_configs: HashMap::new(),
         };
         registry.register_defaults();
+        #[cfg(test)]
+        registry.setup_mock_configs();
         registry
+    }
+
+    #[cfg(test)]
+    fn setup_mock_configs(&mut self) {
+        self.mock_configs.insert(
+            "TinyLlama/TinyLlama-1.1B-Chat-v1.0".to_string(),
+            r#"{"architectures": ["LlamaForCausalLM"]}"#.to_string(),
+        );
+        self.mock_configs.insert(
+            "mistralai/Mistral-7B-v0.1".to_string(),
+            r#"{"architectures": ["MistralForCausalLM"]}"#.to_string(),
+        );
+        self.mock_configs.insert(
+            "sentence-transformers/all-MiniLM-L6-v2".to_string(),
+            r#"{"architectures": ["BertModel"]}"#.to_string(),
+        );
     }
 
     fn register_defaults(&mut self) {
@@ -104,6 +126,7 @@ impl ModelRegistry {
         self.models.insert(model_type.into(), init_fn);
     }
 
+    #[cfg(not(test))]
     async fn get_model_architecture(&self, model_id: &str, revision: &str) -> Result<String> {
         use hf_hub::{api::sync::ApiBuilder, Repo, RepoType};
 
@@ -125,6 +148,21 @@ impl ModelRegistry {
             .architectures
             .first()
             .ok_or_else(|| anyhow!("No architecture found in config.json"))
+            .map(|s| s.to_string())
+    }
+
+    #[cfg(test)]
+    async fn get_model_architecture(&self, model_id: &str, _revision: &str) -> Result<String> {
+        let config_str = self
+            .mock_configs
+            .get(model_id)
+            .ok_or_else(|| anyhow!("Mock config not found for {}", model_id))?;
+
+        let config: ModelConfig = serde_json::from_str(config_str)?;
+        config
+            .architectures
+            .first()
+            .ok_or_else(|| anyhow!("No architecture found in mock config"))
             .map(|s| s.to_string())
     }
 
@@ -268,6 +306,12 @@ mod tests {
             architecture, "BertModel",
             "MiniLM should report BertModel architecture"
         );
+
+        // Test error case for unknown model
+        let result = registry
+            .get_model_architecture("unknown/model", "main")
+            .await;
+        assert!(result.is_err(), "Should error on unknown model");
 
         Ok(())
     }
