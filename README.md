@@ -25,18 +25,18 @@ This is a work in progress and the API is not yet stable!
 
 FastLLM adheres to the following core design principles:
 
-1. **Simple and Modular**
+**Simple and Modular**
    - Clean, well-documented code structure
    - Modular architecture for easy model integration
    - Trait-based design for flexible model implementations
    - Automatic architecture detection from model configs
 
-2. **Zero Config**
+**Zero Config**
    - Sensible defaults for all features and optimizations
    - Automatic hardware detection and optimization
    - Smart fallbacks when optimal settings aren't available
 
-3. **Easy to Hack**
+**Easy to Extend**
    - Clear separation of concerns
    - Minimal boilerplate for adding new models
    - Comprehensive test coverage and examples
@@ -167,7 +167,3 @@ Contributions are welcome! Feel free to:
 Apache 2.0 - See [LICENSE](LICENSE) for details.
 
 ---
-
-<div align="center">
-Made with ❤️ by the Stacklok Team
-</div>
