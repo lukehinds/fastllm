@@ -2,6 +2,41 @@
 
 This guide explains how to add new models to the FastLLM inference API using our standardized model configuration system.
 
+## Model Architecture Detection
+
+FastLLM uses a robust architecture detection system that relies on the model's `config.json` file. Each model must implement the `ModelArchitecture` trait:
+
+```rust
+pub trait ModelArchitecture {
+    fn get_family() -> &'static str;
+    fn supports_architecture(architecture: &str) -> bool;
+}
+```
+
+This trait enables:
+1. Automatic detection of model architectures from HuggingFace config files
+2. Mapping of architectures to model families
+3. Validation that a model implementation supports specific architectures
+
+### Supported Families and Architectures
+
+Currently supported model families and their architectures:
+
+- **Llama Family**
+  - LlamaForCausalLM
+  
+- **Mistral Family**
+  - MistralForCausalLM
+  
+- **Qwen Family**
+  - Qwen2ForCausalLM
+  - Qwen2_5_VLForConditionalGeneration
+  
+- **BERT Family**
+  - BertModel
+  - RobertaModel
+  - DebertaModel
+
 ## Model Configuration System
 
 The system consists of three main components:
@@ -66,11 +101,21 @@ To add a new model, follow these steps:
 2. Implement the required traits:
 
 ```rust
-use crate::models::{BaseModelConfig, ModelConfig, TextGeneration};
+use crate::models::{BaseModelConfig, ModelConfig, TextGeneration, ModelArchitecture};
 
 pub struct YourModelWithConfig {
     config: BaseModelConfig,
     tokenizer: Tokenizer,
+}
+
+impl ModelArchitecture for YourModelWithConfig {
+    fn get_family() -> &'static str {
+        "YourFamily"
+    }
+
+    fn supports_architecture(architecture: &str) -> bool {
+        matches!(architecture, "YourModelForCausalLM" | "YourModelForSequenceClassification")
+    }
 }
 
 impl ModelConfig for YourModelWithConfig {
@@ -93,8 +138,8 @@ impl TextGeneration for YourModelWithConfig {
 3. Register your model in `ModelRegistry`:
 
 ```rust
-self.register_with_metadata(
-    "YourModel",
+self.register(
+    YourModelWithConfig::get_family(),
     Box::new(|model_id, revision, dtype, device| {
         Box::pin(async move {
             let model = crate::models::load_model::<YourModelWithConfig>(
@@ -104,34 +149,12 @@ self.register_with_metadata(
             Ok(ModelWrapper::YourModel(model, model_id))
         })
     }),
-    ModelMetadata::new(
-        "YourModel",
-        vec![ModelCapability::Chat, ModelCapability::Completion],
-        ModelRequirements {
-            min_gpu_memory: Some(8 * 1024 * 1024 * 1024), // 8GB
-            min_system_memory: 16 * 1024 * 1024 * 1024,   // 16GB
-            supports_quantization: true,
-            supported_dtypes: vec!["float16".into(), "float32".into()],
-        },
-    )
-    .with_default_config("max_sequence_length", "4096")
-    .with_default_config("temperature", "0.7"),
 );
 ```
 
-## Model Validation
-
-The `ModelConfig` trait provides default implementations for common validation tasks:
-
-- `validate_head_dimensions`: Ensures proper attention head configuration
-- `validate_gqa_config`: Validates grouped-query attention settings
-- `validate`: Runs all validation checks
-
-You can override these methods if your model requires custom validation.
-
 ## Testing
 
-Always include tests for your model implementation:
+Include tests for both model implementation and architecture detection:
 
 ```rust
 #[cfg(test)]
@@ -139,27 +162,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_model_config_validation() {
-        let config = BaseModelConfig {
-            // Set up test configuration
-        };
-        let model = YourModelWithConfig::new(config);
-        assert!(model.validate().is_ok());
+    fn test_architecture_support() {
+        assert!(YourModelWithConfig::supports_architecture("YourModelForCausalLM"));
+        assert!(!YourModelWithConfig::supports_architecture("UnsupportedArchitecture"));
+    }
+
+    #[tokio::test]
+    async fn test_model_loading() {
+        // Test that your model loads correctly with its config.json
     }
 }
 ```
 
 ## Best Practices
 
-1. **Configuration**: Use the `BaseModelConfig` as your model's foundation
-2. **Metadata**: Provide accurate metadata about your model's capabilities and requirements
-3. **Validation**: Implement proper validation to catch configuration errors early
-4. **Testing**: Write comprehensive tests for your model's configuration and behavior
-5. **Documentation**: Document any model-specific features or requirements
+1. **Architecture Detection**: 
+   - Implement `ModelArchitecture` trait for reliable model type detection
+   - Use specific architecture names from HuggingFace's model hub
+   - Test architecture detection with real model configs
+
+2. **Family Mapping**:
+   - Group related architectures under the same family
+   - Use clear, consistent family names
+   - Document supported architectures for each family
+
+3. **Configuration**: Use the `BaseModelConfig` as your model's foundation
+4. **Metadata**: Provide accurate metadata about your model's capabilities and requirements
+5. **Validation**: Implement proper validation to catch configuration errors early
+6. **Testing**: Write comprehensive tests for your model's configuration and behavior
+7. **Documentation**: Document any model-specific features or requirements
 
 ## Example Models
 
 See existing model implementations for reference:
-- `src/models/llama.rs`
-- `src/models/mistral.rs`
-- `src/models/qwen.rs`
+- `src/models/llama.rs` - LLaMA family models
+- `src/models/mistral.rs` - Mistral family models
+- `src/models/qwen.rs` - Qwen family models
+- `src/models/embeddings.rs` - BERT family models

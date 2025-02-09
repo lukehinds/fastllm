@@ -11,7 +11,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 use super::cache::ModelCache;
-use super::model_initializer::ModelInitializer;
+use super::model_initializer::{ModelArchitecture, ModelInitializer};
 
 // Define a custom config that we can deserialize from JSON
 #[derive(Deserialize, Clone)]
@@ -146,6 +146,16 @@ impl ModelInitializer for LlamaWithConfig {
 
     fn forward(&self, input: &Tensor, pos: usize, cache: &mut Self::Cache) -> Result<Tensor> {
         Ok(self.model.forward(input, pos, &mut cache.inner)?)
+    }
+}
+
+impl ModelArchitecture for LlamaWithConfig {
+    fn get_family() -> &'static str {
+        "Llama"
+    }
+
+    fn supports_architecture(architecture: &str) -> bool {
+        architecture == "LlamaForCausalLM"
     }
 }
 

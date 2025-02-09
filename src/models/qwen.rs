@@ -6,7 +6,7 @@ use candle_transformers::models::qwen2::{Config as QwenConfig, ModelForCausalLM 
 use std::any::Any;
 use std::cell::RefCell;
 
-use super::model_initializer::ModelInitializer;
+use super::model_initializer::{ModelArchitecture, ModelInitializer};
 use super::{BaseModelConfig, ModelCache, ModelConfigValidation, ModelForward, ModelGeneration};
 
 #[derive(Debug)]
@@ -167,6 +167,19 @@ impl ModelGeneration for QwenWithConfig {
 
     fn get_eos_token_id(&self) -> Option<usize> {
         Some(2)
+    }
+}
+
+impl ModelArchitecture for QwenWithConfig {
+    fn get_family() -> &'static str {
+        "Qwen"
+    }
+
+    fn supports_architecture(architecture: &str) -> bool {
+        matches!(
+            architecture,
+            "Qwen2ForCausalLM" | "Qwen2_5_VLForConditionalGeneration"
+        )
     }
 }
 

@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use super::cache::ModelCache;
-use super::model_initializer::ModelInitializer;
+use super::model_initializer::{ModelArchitecture, ModelInitializer};
 
 // Wrapper type for cache management
 #[derive(Debug)]
@@ -233,6 +233,16 @@ impl ModelInitializer for MistralWithConfig {
 
         cache.increment_offset();
         Ok(output)
+    }
+}
+
+impl ModelArchitecture for MistralWithConfig {
+    fn get_family() -> &'static str {
+        "Mistral"
+    }
+
+    fn supports_architecture(architecture: &str) -> bool {
+        architecture == "MistralForCausalLM"
     }
 }
 

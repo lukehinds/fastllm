@@ -4,12 +4,18 @@ use anyhow::{Context, Result};
 use candle_core::{DType, Device};
 use hf_hub::{api::sync::ApiBuilder, Repo, RepoType};
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use std::env;
 
-use crate::models::model_initializer::ModelInitializer;
+use crate::models::model_initializer::{ModelArchitecture, ModelInitializer};
 use crate::models::Model;
 
-pub async fn load_model<M: ModelInitializer>(
+#[derive(Deserialize)]
+struct ModelConfig {
+    architectures: Vec<String>,
+}
+
+pub async fn load_model<M: ModelInitializer + ModelArchitecture>(
     model_id: &str,
     revision: &str,
     default_dtype: DType,
@@ -49,8 +55,28 @@ where
     tracing::info!("Loading model configuration");
     let config_content =
         std::fs::read_to_string(&config_path).context("Failed to read config.json")?;
-    let config_file: M::Config =
-        serde_json::from_str(&config_content).context("Failed to parse config.json")?;
+
+    // First parse the raw config to get the architecture
+    let raw_config: ModelConfig = serde_json::from_str(&config_content)
+        .context("Failed to parse config.json for architecture detection")?;
+
+    // Get the architecture and verify it's supported
+    let architecture = raw_config
+        .architectures
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("No architecture found in config.json"))?;
+
+    if !M::supports_architecture(architecture) {
+        return Err(anyhow::anyhow!(
+            "Model architecture '{}' is not supported by {} family",
+            architecture,
+            M::get_family()
+        ));
+    }
+
+    // Now parse the config for the specific model type
+    let config_file: M::Config = serde_json::from_str(&config_content)
+        .context("Failed to parse config.json for model configuration")?;
 
     tracing::info!("Loading model weights");
     // First try the single file approach
