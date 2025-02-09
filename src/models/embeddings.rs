@@ -1,3 +1,4 @@
+use super::model_initializer::ModelArchitecture;
 use crate::providers::huggingface::load_tokenizer;
 use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
@@ -451,6 +452,16 @@ impl EmbeddingModel for MiniLMModel {
 
     fn embedding_size(&self) -> usize {
         384 // MiniLM-L6-v2 embedding size
+    }
+}
+
+impl ModelArchitecture for MiniLMModel {
+    fn get_family() -> &'static str {
+        "bert"
+    }
+
+    fn supports_architecture(architecture: &str) -> bool {
+        matches!(architecture, "BertModel" | "RobertaModel" | "DebertaModel")
     }
 }
 

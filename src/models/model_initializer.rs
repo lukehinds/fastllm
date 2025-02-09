@@ -21,6 +21,11 @@ pub trait ModelInitializer: Sized {
     fn forward(&self, input: &Tensor, pos: usize, cache: &mut Self::Cache) -> Result<Tensor>;
 }
 
+pub trait ModelArchitecture {
+    fn get_family() -> &'static str;
+    fn supports_architecture(architecture: &str) -> bool;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
