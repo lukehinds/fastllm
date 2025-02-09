@@ -21,6 +21,29 @@ This is a work in progress and the API is not yet stable!
 - 🔌 **Multiple Model Support** - Run various architectures like Mistral, Qwen, TinyLlama
 - 📊 **Text Embeddings** - Generate embeddings using models like all-MiniLM-L6-v2
 
+## 📄 Design Principles
+
+FastLLM adheres to the following core design principles:
+
+1. **Simple and Modular**
+   - Clean, well-documented code structure
+   - Modular architecture for easy model integration
+   - Trait-based design for flexible model implementations
+   - Automatic architecture detection from model configs
+
+2. **Zero Config**
+   - Sensible defaults for all features and optimizations
+   - Automatic hardware detection and optimization
+   - Smart fallbacks when optimal settings aren't available
+
+3. **Easy to Hack**
+   - Clear separation of concerns
+   - Minimal boilerplate for adding new models
+   - Comprehensive test coverage and examples
+   - Detailed documentation for model integration
+
+The goal is to make it as straightforward as possible to add new models while maintaining high performance by default.
+
 ## 🎯 Supported Models
 
 | Model Type | Supported Models | Description |
