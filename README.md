@@ -46,10 +46,12 @@ The goal is to make it as straightforward as possible to add new models while ma
 
 ## 🎯 Supported Models
 
-| Model Type | Supported Models | Description |
+| Model Family | Supported Architectures | Example Models |
 |------------|-----------------|-------------|
-| **Chat Models** | • Mistral-7B and derivatives<br>• Qwen2.5 and derivatives<br>• TinyLlama-1.1B-Chat | High-quality instruction-following models |
-| **Embedding Models** | • all-MiniLM-L6-v2 | Efficient text embedding generation |
+| **Llama** | LlamaForCausalLM | • TinyLlama-1.1B-Chat<br>• Any Llama2 derivative |
+| **Mistral** | MistralForCausalLM | • Mistral-7B and derivatives<br>• Mixtral-8x7B |
+| **Qwen** | Qwen2ForCausalLM<br>Qwen2_5_VLForConditionalGeneration | • Qwen2<br>• Qwen2.5 |
+| **BERT** | BertModel<br>RobertaModel<br>DebertaModel | • all-MiniLM-L6-v2<br>• Any BERT/RoBERTa/DeBERTa model |
 
 ## 🚀 Quick Start
 
