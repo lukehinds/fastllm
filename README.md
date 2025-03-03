@@ -1,4 +1,4 @@
-# 🚀 FastLLM
+# FastLLM
 
 > A Rust inference server providing OpenAI-compatible APIs for local LLM deployment. Run language models directly from HuggingFace with native MacOS Metal, CUDA and CPU support.
 
@@ -10,18 +10,17 @@
 
 </div>
 
-## 🧪 Experimental
+## Experimental
 
 This is a work in progress and the API is not yet stable!
 
-## 🌟 Key Features
+## Key Features
+- Native acceleration on Metal (Apple Silicon) and CUDA
+- Direct model loading from HuggingFace Hub
+- Run various architectures like Mistral, Qwen, TinyLlama
+- Generate embeddings using models like all-MiniLM-L6-v2
 
-- 🚄 **High Performance** - Native acceleration on Metal (Apple Silicon) and CUDA
-- 🤗 **HuggingFace Integration** - Direct model loading from HuggingFace Hub
-- 🔌 **Multiple Model Support** - Run various architectures like Mistral, Qwen, TinyLlama
-- 📊 **Text Embeddings** - Generate embeddings using models like all-MiniLM-L6-v2
-
-## 📄 Design Principles
+## Design Principles
 
 FastLLM adheres to the following core design principles:
 
@@ -44,7 +43,7 @@ FastLLM adheres to the following core design principles:
 
 The goal is to make it as straightforward as possible to add new models while maintaining high performance by default.
 
-## 🎯 Supported Models
+## Supported Models
 
 | Model Family | Supported Architectures | Example Models |
 |------------|-----------------|-------------|
@@ -53,7 +52,7 @@ The goal is to make it as straightforward as possible to add new models while ma
 | **Qwen** | Qwen2ForCausalLM<br>Qwen2_5_VLForConditionalGeneration | • Qwen2<br>• Qwen2.5 |
 | **BERT** | BertModel<br>RobertaModel<br>DebertaModel | • all-MiniLM-L6-v2<br>• Any BERT/RoBERTa/DeBERTa model |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -157,14 +156,14 @@ curl http://localhost:3000/v1/embeddings \
 - [ ] Improved caching and optimization
 - [ ] Multi-GPU Inference
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Feel free to:
 - Open issues for bugs or feature requests
 - Submit pull requests
 - Share benchmarks and performance reports
 
-## 📄 License
+## License
 
 Apache 2.0 - See [LICENSE](LICENSE) for details.
 
