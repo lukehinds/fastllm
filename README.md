@@ -4,7 +4,6 @@
 
 <div align="center">
 
-[![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![OpenAI](https://img.shields.io/badge/OpenAI%20Compatible-412991.svg?style=for-the-badge&logo=openai&logoColor=white)](https://platform.openai.com/docs/api-reference)
 [![HuggingFace](https://img.shields.io/badge/🤗%20HuggingFace-Enabled-yellow.svg?style=for-the-badge)](https://huggingface.co/)
 
