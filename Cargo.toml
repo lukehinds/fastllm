@@ -22,7 +22,7 @@ candle-transformers = { version = "0.8.2" }
 tokenizers = "0.21.0"
 hf-hub = { version = "0.3", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
-config = "0.13"
+config = "0.15"
 uuid = { version = "1.6", features = ["v4"] }
 chrono = "0.4"
 futures = "0.3.30"
