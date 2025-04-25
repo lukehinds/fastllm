@@ -20,7 +20,7 @@ candle-core = { version = "0.8.2" }
 candle-nn = { version = "0.8.2" }
 candle-transformers = { version = "0.8.2" }
 tokenizers = "0.21.0"
-hf-hub = { version = "0.3", features = ["tokio"] }
+hf-hub = { version = "0.4", features = ["tokio"] }
 clap = { version = "4.4", features = ["derive"] }
 config = "0.13"
 uuid = { version = "1.6", features = ["v4"] }
